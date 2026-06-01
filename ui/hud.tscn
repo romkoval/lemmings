@@ -1,0 +1,47 @@
+[gd_scene load_steps=3 format=3 uid="uid://b1hud000000000"]
+
+[ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://ui/skill_panel.gd" id="2_panel"]
+
+[node name="HUD" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 48.0
+theme_override_constants/separation = 16
+
+[node name="SavedLabel" type="Label" parent="TopBar"]
+custom_minimum_size = Vector2(180, 0)
+text = "Спасено: 0 / 0"
+
+[node name="SpawnedLabel" type="Label" parent="TopBar"]
+custom_minimum_size = Vector2(140, 0)
+text = "Вышло: 0"
+
+[node name="TimerLabel" type="Label" parent="TopBar"]
+custom_minimum_size = Vector2(80, 0)
+text = "00:00"
+
+[node name="PauseButton" type="Button" parent="TopBar"]
+custom_minimum_size = Vector2(80, 40)
+text = "Пауза"
+
+[node name="NukeButton" type="Button" parent="TopBar"]
+custom_minimum_size = Vector2(80, 40)
+text = "Nuke"
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -96.0
+
+[node name="SkillPanel" type="HBoxContainer" parent="BottomBar"]
+script = ExtResource("2_panel")
