@@ -35,7 +35,7 @@ var fall_distance: float = 0.0
 var is_floater: bool = false
 var is_climber: bool = false
 var bomb_timer: float = 0.0
-var active_skill_node: Node = null
+var active_skill_node: RefCounted = null
 var lemming_id: int = -1
 
 @onready var body_visual: ColorRect = $Body
@@ -180,7 +180,7 @@ func turn_around() -> void:
 	_update_visual()
 
 
-func assign_skill(skill: Node) -> bool:
+func assign_skill(skill) -> bool:
 	if skill == null:
 		return false
 	if not skill.has_method("can_apply") or not skill.can_apply(self):

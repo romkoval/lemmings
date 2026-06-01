@@ -1,11 +1,9 @@
 class_name FloaterSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "floater"
-
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "floater"
 
 
 func can_apply(lemming: Lemming) -> bool:

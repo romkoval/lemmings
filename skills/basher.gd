@@ -1,7 +1,6 @@
 class_name BasherSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "basher"
 const TICKS_PER_DIG: int = 6
 
 
@@ -9,7 +8,7 @@ var tick_counter: int = 0
 
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "basher"
 
 
 func can_apply(lemming: Lemming) -> bool:

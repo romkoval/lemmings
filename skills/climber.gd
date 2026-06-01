@@ -1,11 +1,9 @@
 class_name ClimberSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "climber"
-
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "climber"
 
 
 func can_apply(lemming: Lemming) -> bool:

@@ -1,12 +1,11 @@
 class_name BomberSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "bomber"
 const EXPLOSION_RADIUS_TILES: int = 2
 
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "bomber"
 
 
 func can_apply(lemming: Lemming) -> bool:

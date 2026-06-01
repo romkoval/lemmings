@@ -1,14 +1,13 @@
 class_name DiggerSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "digger"
 const TICKS_PER_DIG: int = 6
 
 var tick_counter: int = 0
 
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "digger"
 
 
 func can_apply(lemming: Lemming) -> bool:

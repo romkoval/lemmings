@@ -1,0 +1,32 @@
+{
+  "id": "fun_05",
+  "name": "Use Everything",
+  "difficulty": "fun",
+  "number": 5,
+  "save_required": 7,
+  "total_lemmings": 12,
+  "time_limit": 360,
+  "release_rate": 30,
+  "skill_counts": {
+    "climber": 2,
+    "floater": 2,
+    "bomber": 2,
+    "blocker": 2,
+    "builder": 2,
+    "basher": 2,
+    "miner": 2,
+    "digger": 2
+  },
+  "entrance_pos": [80, 64],
+  "entrance_direction": 1,
+  "exit_pos": [560, 432],
+  "terrain_rects": [
+    {"x": 0, "y": 8, "w": 14, "h": 22},
+    {"x": 18, "y": 14, "w": 12, "h": 16},
+    {"x": 34, "y": 8, "w": 11, "h": 22},
+    {"x": 0, "y": 30, "w": 45, "h": 4}
+  ],
+  "steel_rects": [
+    {"x": 18, "y": 14, "w": 12, "h": 1}
+  ]
+}

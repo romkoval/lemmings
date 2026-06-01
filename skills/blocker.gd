@@ -1,11 +1,9 @@
 class_name BlockerSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "blocker"
-
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "blocker"
 
 
 func can_apply(lemming: Lemming) -> bool:

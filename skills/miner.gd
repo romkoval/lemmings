@@ -1,14 +1,13 @@
 class_name MinerSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "miner"
 const TICKS_PER_DIG: int = 8
 
 var tick_counter: int = 0
 
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "miner"
 
 
 func can_apply(lemming: Lemming) -> bool:

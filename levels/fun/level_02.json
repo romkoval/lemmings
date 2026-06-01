@@ -1,0 +1,30 @@
+{
+  "id": "fun_02",
+  "name": "Dig Here",
+  "difficulty": "fun",
+  "number": 2,
+  "save_required": 7,
+  "total_lemmings": 10,
+  "time_limit": 240,
+  "release_rate": 40,
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 0,
+    "digger": 5
+  },
+  "entrance_pos": [80, 64],
+  "entrance_direction": 1,
+  "exit_pos": [240, 432],
+  "terrain_rects": [
+    {"x": 0, "y": 6, "w": 45, "h": 20},
+    {"x": 0, "y": 30, "w": 45, "h": 4}
+  ],
+  "steel_rects": [
+    {"x": 0, "y": 30, "w": 45, "h": 4}
+  ]
+}

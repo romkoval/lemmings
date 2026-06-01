@@ -1,7 +1,6 @@
 class_name BuilderSkill
 extends BaseSkill
 
-const SKILL_NAME: String = "builder"
 const MAX_STEPS: int = 12
 const TICKS_PER_STEP: int = 12
 
@@ -10,7 +9,7 @@ var tick_counter: int = 0
 
 
 func get_skill_name() -> String:
-	return SKILL_NAME
+	return "builder"
 
 
 func can_apply(lemming: Lemming) -> bool:
