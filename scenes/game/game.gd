@@ -2,6 +2,7 @@ class_name Game
 extends Node2D
 
 const HUD_SCENE: PackedScene = preload("res://ui/hud.tscn")
+const RESULT_SCENE: PackedScene = preload("res://ui/result_screen.tscn")
 
 @export var initial_level_path: String = ""
 
@@ -12,6 +13,7 @@ var current_level: Level = null
 var lemming_manager: LemmingManager = null
 var skill_manager: SkillManager = null
 var hud: HUD = null
+var result_screen: ResultScreen = null
 
 
 func _ready() -> void:
@@ -29,6 +31,13 @@ func _ready() -> void:
 	hud.skill_chosen.connect(_on_skill_chosen)
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
 	lemming_manager.all_lemmings_resolved.connect(_on_all_resolved)
+
+	result_screen = RESULT_SCENE.instantiate()
+	hud_layer.add_child(result_screen)
+	result_screen.retry_pressed.connect(_on_retry)
+	result_screen.menu_pressed.connect(_on_back_to_menu)
+	GameManager.level_completed.connect(_on_level_completed)
+	GameManager.level_failed.connect(_on_level_failed)
 
 	var path: String = initial_level_path
 	if path == "":
@@ -114,3 +123,21 @@ func _on_nuke() -> void:
 
 func _on_all_resolved() -> void:
 	GameManager.complete_level(current_level.save_required)
+
+
+func _on_level_completed(saved: int, required: int) -> void:
+	result_screen.show_result(true, saved, required, current_level.total_lemmings)
+
+
+func _on_level_failed(_reason: String) -> void:
+	result_screen.show_result(false, GameManager.saved_count, current_level.save_required, current_level.total_lemmings)
+
+
+func _on_retry() -> void:
+	GameManager.reset()
+	get_tree().reload_current_scene()
+
+
+func _on_back_to_menu() -> void:
+	GameManager.reset()
+	get_tree().change_scene_to_file("res://scenes/menu/main_menu.tscn")

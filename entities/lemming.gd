@@ -143,9 +143,16 @@ func _process_skill(_delta: float) -> void:
 
 func _process_exploding(delta: float) -> void:
 	bomb_timer -= delta
+	velocity.y = GRAVITY
+	velocity.x = WALK_SPEED * direction
+	move_and_slide()
+	if body_visual:
+		var phase: float = fposmod(bomb_timer, 0.5)
+		body_visual.color = Color(1.0, 0.3, 0.3) if phase > 0.25 else Color(1.0, 1.0, 0.3)
 	if bomb_timer <= 0.0:
 		if active_skill_node and active_skill_node.has_method("detonate"):
 			active_skill_node.detonate(self)
+		AudioManager.play_sfx("explosion")
 		die("bomb")
 
 

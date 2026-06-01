@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1result0000000"]
+
+[ext_resource type="Script" path="res://ui/result_screen.gd" id="1_result"]
+
+[node name="ResultScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+script = ExtResource("1_result")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -160.0
+offset_right = 200.0
+offset_bottom = 160.0
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+theme_override_constants/separation = 24
+
+[node name="TitleLabel" type="Label" parent="Panel/VBox"]
+theme_override_font_sizes/font_size = 36
+text = "РЕЗУЛЬТАТ"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="Label" parent="Panel/VBox"]
+theme_override_font_sizes/font_size = 20
+text = "Спасено: 0 / 0"
+horizontal_alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="Panel/VBox"]
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="RetryButton" type="Button" parent="Panel/VBox/HBox"]
+custom_minimum_size = Vector2(120, 48)
+text = "Заново"
+
+[node name="MenuButton" type="Button" parent="Panel/VBox/HBox"]
+custom_minimum_size = Vector2(120, 48)
+text = "В меню"
