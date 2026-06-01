@@ -1,25 +1,11 @@
-# Godot
+# Godot 4 imports
 .godot/
 .import/
-export/
-*.import
 
-# Build artifacts
-*.apk
-*.aab
-*.ipa
-
-# OS
+# OS / editor
 .DS_Store
-Thumbs.db
+*.swp
+*~
 
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
-
-# Temp
-godot.zip
-*.tmp
+# Local config
+export_credentials.cfg
