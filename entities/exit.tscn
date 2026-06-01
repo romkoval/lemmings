@@ -1,0 +1,30 @@
+[gd_scene load_steps=3 format=3 uid="uid://b1exit00000000"]
+
+[ext_resource type="Script" path="res://entities/exit.gd" id="1_exit"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
+size = Vector2(32, 32)
+
+[node name="LevelExit" type="Area2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_exit")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(16, 16)
+shape = SubResource("RectangleShape2D_exit")
+
+[node name="Visual" type="ColorRect" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.2, 0.8, 0.3, 1)
+
+[node name="Label" type="Label" parent="."]
+offset_left = 0.0
+offset_top = -16.0
+offset_right = 32.0
+offset_bottom = 0.0
+text = "OUT"
+horizontal_alignment = 1
