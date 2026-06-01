@@ -1,0 +1,25 @@
+# Godot
+.godot/
+.import/
+export/
+*.import
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temp
+godot.zip
+*.tmp

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#1a1a2e"/>
+  <circle cx="64" cy="45" r="12" fill="#4eff4e"/>
+  <rect x="56" y="57" width="16" height="22" rx="3" fill="#4e4eff"/>
+  <rect x="58" y="79" width="5" height="10" rx="2" fill="#4e4eff"/>
+  <rect x="65" y="79" width="5" height="10" rx="2" fill="#4e4eff"/>
+  <text x="64" y="110" text-anchor="middle" fill="#ffffff" font-size="14" font-family="sans-serif">LEM</text>
+</svg>
