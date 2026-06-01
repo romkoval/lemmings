@@ -1,0 +1,63 @@
+name: Lemmings CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import project (populates .godot/)
+        run: godot --headless --import || true
+
+      - name: Run GUT tests
+        run: |
+          godot --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://tests \
+            -gexit \
+            -gjunit_xml_file=res://tests/results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gut-results
+          path: tests/results.xml
+
+  export:
+    needs: test
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          cp -r /root/.local/share/godot/export_templates/4.3.stable/* \
+            ~/.local/share/godot/export_templates/4.3.stable/ || true
+
+      - name: Import project
+        run: godot --headless --import || true
+
+      - name: Export Linux build
+        run: |
+          mkdir -p build/linux
+          godot --headless --export-release "Linux/X11" build/linux/lemmings.x86_64 || true
+
+      - name: Upload Linux artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lemmings-linux
+          path: build/linux/
