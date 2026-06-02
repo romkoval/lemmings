@@ -94,7 +94,13 @@ func _process_walking(delta: float) -> void:
 		var n: Vector2 = col.get_normal()
 		if abs(n.x) > 0.5:
 			var blocker_hit: bool = _is_blocker_at_front()
-			if is_climber and not blocker_hit:
+			if blocker_hit:
+				turn_around()
+				return
+			# Try to step up over a 1-tile-high obstacle (e.g. builder stairs).
+			if _try_step_up():
+				return
+			if is_climber:
 				change_state(State.CLIMBING)
 				return
 			turn_around()
@@ -179,6 +185,51 @@ func _has_wall_at_side() -> bool:
 	query.exclude = [self]
 	var result := space.intersect_ray(query)
 	return not result.is_empty()
+
+
+func _get_level() -> Level:
+	var node: Node = get_parent()
+	while node:
+		if node is Level:
+			return node
+		node = node.get_parent()
+	return null
+
+
+# Checks whether the cell directly in front (at body level) is a single solid
+# tile with empty space above it. Used by step-up over builder stairs.
+func can_step_up() -> bool:
+	var level: Level = _get_level()
+	if level == null or level.tile_map == null:
+		return false
+	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 16)
+	var feet_tile: Vector2i = level.world_to_tile(feet_world)
+	var wall_tile: Vector2i = feet_tile + Vector2i(0, -1)
+	if not _is_solid(level, wall_tile):
+		return false
+	var above_tile: Vector2i = wall_tile + Vector2i(0, -1)
+	if _is_solid(level, above_tile):
+		return false
+	return true
+
+
+func _is_solid(level: Level, tile: Vector2i) -> bool:
+	if level.tile_map.get_cell_source_id(Level.TERRAIN_LAYER, tile) != -1:
+		return true
+	if level.tile_map.get_cell_source_id(Level.STEEL_LAYER, tile) != -1:
+		return true
+	return false
+
+
+func _try_step_up() -> bool:
+	if not can_step_up():
+		return false
+	var level: Level = _get_level()
+	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 16)
+	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
+	# Snap feet to the top of the wall tile.
+	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
+	return true
 
 
 func turn_around() -> void:

@@ -53,19 +53,31 @@ func _apply_data(d: Dictionary) -> void:
 		if cell is Array and cell.size() == 2:
 			tile_map.set_cell(STEEL_LAYER, Vector2i(int(cell[0]), int(cell[1])), 1, Vector2i.ZERO)
 	for rect_dict in d.get("terrain_rects", []):
-		_fill_rect(rect_dict, TERRAIN_LAYER, 0)
+		_fill_terrain_rect(rect_dict)
 	for rect_dict in d.get("steel_rects", []):
-		_fill_rect(rect_dict, STEEL_LAYER, 1)
+		_fill_rect(rect_dict, STEEL_LAYER, 1, Vector2i.ZERO)
 
 
-func _fill_rect(rect: Dictionary, layer: int, source_id: int) -> void:
+func _fill_rect(rect: Dictionary, layer: int, source_id: int, atlas: Vector2i) -> void:
 	var x0: int = int(rect.get("x", 0))
 	var y0: int = int(rect.get("y", 0))
 	var w: int = int(rect.get("w", 1))
 	var h: int = int(rect.get("h", 1))
 	for dy in h:
 		for dx in w:
-			tile_map.set_cell(layer, Vector2i(x0 + dx, y0 + dy), source_id, Vector2i.ZERO)
+			tile_map.set_cell(layer, Vector2i(x0 + dx, y0 + dy), source_id, atlas)
+
+
+# Top row gets the grass-topped atlas tile; rows below use the plain-dirt tile.
+func _fill_terrain_rect(rect: Dictionary) -> void:
+	var x0: int = int(rect.get("x", 0))
+	var y0: int = int(rect.get("y", 0))
+	var w: int = int(rect.get("w", 1))
+	var h: int = int(rect.get("h", 1))
+	for dy in h:
+		var atlas: Vector2i = Vector2i.ZERO if dy == 0 else Vector2i(1, 0)
+		for dx in w:
+			tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy), 0, atlas)
 
 
 func _build_default_floor_if_empty() -> void:
@@ -79,3 +91,5 @@ func _build_default_floor_if_empty() -> void:
 		return
 	for x in range(0, 45):
 		tile_map.set_cell(TERRAIN_LAYER, Vector2i(x, 30), 0, Vector2i.ZERO)
+	for x in range(0, 45):
+		tile_map.set_cell(TERRAIN_LAYER, Vector2i(x, 31), 0, Vector2i(1, 0))

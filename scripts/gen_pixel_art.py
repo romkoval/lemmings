@@ -16,37 +16,41 @@ TIL.mkdir(parents=True, exist_ok=True)
 
 # ── Palette ────────────────────────────────────────────────────────────
 T = (0, 0, 0, 0)
-HAIR_D = (0x00, 0x99, 0x33, 255)
-HAIR   = (0x00, 0xcc, 0x44, 255)
-HAIR_L = (0x00, 0xff, 0x55, 255)
-ROBE_D = (0x11, 0x22, 0x88, 255)
-ROBE   = (0x22, 0x44, 0xcc, 255)
-ROBE_L = (0x44, 0x66, 0xff, 255)
-SKIN   = (0xff, 0xcc, 0x99, 255)
-SKIN_D = (0xff, 0xbb, 0x77, 255)
+HAIR_D = (0x00, 0x88, 0x22, 255)
+HAIR   = (0x10, 0xdd, 0x44, 255)
+HAIR_L = (0x44, 0xff, 0x66, 255)
+ROBE_D = (0x10, 0x1c, 0x66, 255)
+ROBE   = (0x20, 0x3c, 0xcc, 255)
+ROBE_L = (0x55, 0x77, 0xff, 255)
+SKIN   = (0xff, 0xd0, 0xa0, 255)
+SKIN_D = (0xe6, 0xa0, 0x70, 255)
 EYE_W  = (0xff, 0xff, 0xff, 255)
 PUPIL  = (0x00, 0x00, 0x00, 255)
 RED    = (0xff, 0x33, 0x33, 255)
 ORANGE = (0xff, 0x88, 0x22, 255)
 YELLOW = (0xff, 0xee, 0x44, 255)
 WHITE  = (0xff, 0xff, 0xff, 255)
-BRICK  = (0xcc, 0x66, 0x33, 255)
+BRICK  = (0xdd, 0x77, 0x33, 255)
 BRICK_D= (0x88, 0x44, 0x22, 255)
 GREY_L = (0xcc, 0xcc, 0xcc, 255)
 GREY   = (0x99, 0x99, 0x99, 255)
 GREY_D = (0x55, 0x55, 0x55, 255)
-DIRT_L = (0xa0, 0x80, 0x30, 255)
-DIRT   = (0x8b, 0x69, 0x14, 255)
-DIRT_D = (0x6b, 0x49, 0x14, 255)
-GRASS  = (0x22, 0x8b, 0x22, 255)
-GRASS_D= (0x00, 0x64, 0x00, 255)
-GRASS_L= (0x44, 0xcc, 0x44, 255)
-STEEL  = (0x88, 0x88, 0x88, 255)
-STEEL_L= (0xbb, 0xbb, 0xbb, 255)
-STEEL_D= (0x55, 0x55, 0x55, 255)
+DIRT_L = (0xb8, 0x8a, 0x3a, 255)
+DIRT   = (0x8c, 0x66, 0x22, 255)
+DIRT_D = (0x5c, 0x40, 0x14, 255)
+DIRT_DD= (0x3a, 0x28, 0x0a, 255)
+GRASS  = (0x32, 0xb8, 0x32, 255)
+GRASS_D= (0x10, 0x70, 0x18, 255)
+GRASS_L= (0x66, 0xea, 0x55, 255)
+STEEL  = (0x95, 0x9a, 0xa2, 255)
+STEEL_L= (0xd0, 0xd4, 0xd9, 255)
+STEEL_D= (0x4a, 0x4f, 0x57, 255)
 DOOR   = (0x66, 0x33, 0x11, 255)
 DOOR_L = (0xaa, 0x77, 0x33, 255)
 EXIT_GRN=(0x44, 0xee, 0x44, 255)
+SKY_TOP= (0x1a, 0x1f, 0x4e, 255)
+SKY_MID= (0x0c, 0x10, 0x2e, 255)
+SKY_BOT= (0x02, 0x02, 0x10, 255)
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -77,67 +81,82 @@ def stamp(sheet, frame_img, idx):
 def draw_lemming_base(im, *, ox=0, oy=0, leg_pose="together", arms="down"):
     """Draw a 16x16 lemming silhouette into im at (ox,oy).
 
+    Layout — head+hair rows 0-4 (5px), robe rows 5-12 (8px), legs 13-15 (3px).
     leg_pose: 'together' | 'split' | 'mid'
     arms: 'down' | 'side' | 'up' | 'fwd_swing' | 'fwd_pick'
     """
     p = im.load()
-    def set(x, y, c):
+    def s(x, y, c):
         xx, yy = ox + x, oy + y
         if 0 <= xx < im.width and 0 <= yy < im.height:
             p[xx, yy] = c
 
-    # ── Hair (rows 1-3) — spiky green cap
-    for x in (5, 7, 9): set(x, 1, HAIR_L)
-    for x in range(4, 12): set(x, 2, HAIR)
-    for x in range(4, 12): set(x, 3, HAIR_D)
+    # ── Hair (rows 0-3) — bright green mohawk-style cap, 5 rows tall
+    for x in (7, 8): s(x, 0, HAIR_L)               # crown spike
+    for x in range(6, 10): s(x, 1, HAIR_L)         # top of cap
+    for x in range(5, 11): s(x, 2, HAIR)           # main hair band
+    for x in range(5, 11): s(x, 3, HAIR_D)         # underside of hair
+    s(4, 3, HAIR_D); s(11, 3, HAIR_D)              # side wisps
 
-    # ── Face (rows 4-5) — skin
-    for x in range(5, 11): set(x, 4, SKIN)
-    for x in range(5, 11): set(x, 5, SKIN)
-    # Eyes (facing right): two white pixels on right side
-    set(8, 5, EYE_W); set(9, 5, PUPIL)
+    # ── Face (row 4) — skin band with two white eyes
+    for x in range(5, 11): s(x, 4, SKIN)
+    s(6, 4, EYE_W)                                  # left eye
+    s(9, 4, EYE_W)                                  # right eye
+    # ── Chin/cheek (row 5) — narrow
+    for x in range(6, 10): s(x, 5, SKIN_D)
 
-    # ── Robe shoulders (row 6)
-    for x in range(4, 12): set(x, 6, ROBE)
-    # ── Robe body (rows 7-10) — bell shape
-    for x in range(4, 12): set(x, 7, ROBE)
-    for x in range(3, 13): set(x, 8, ROBE)
-    for x in range(3, 13): set(x, 9, ROBE_D)
-    for x in range(3, 13): set(x, 10, ROBE_D)
+    # ── Robe collar (row 6) — narrow shoulders
+    for x in range(5, 11): s(x, 6, ROBE_L)
+    # ── Robe body — bell widens downward
+    for x in range(4, 12): s(x, 7, ROBE)
+    for x in range(4, 12): s(x, 8, ROBE)
+    for x in range(4, 12): s(x, 9, ROBE)
+    for x in range(3, 13): s(x, 10, ROBE_D)
+    for x in range(3, 13): s(x, 11, ROBE_D)
+    # ── Hem (row 12) — widest, darker
+    for x in range(3, 13): s(x, 12, ROBE_D)
+    s(2, 12, ROBE_D); s(13, 12, ROBE_D)
 
-    # ── Arms
+    # ── Arms (overwrite robe shoulders/sides)
     if arms == "down":
-        set(3, 7, SKIN); set(12, 7, SKIN)
-        set(3, 8, SKIN); set(12, 8, SKIN)
-    elif arms == "side":  # blocker — arms out
-        set(2, 7, SKIN); set(13, 7, SKIN)
-        set(1, 7, SKIN); set(14, 7, SKIN)
-        set(2, 8, SKIN); set(13, 8, SKIN)
+        s(3, 8, SKIN); s(12, 8, SKIN)
+        s(3, 9, SKIN_D); s(12, 9, SKIN_D)
+    elif arms == "side":  # blocker — arms stretched horizontally
+        for x in (1, 2, 3): s(x, 8, SKIN)
+        for x in (12, 13, 14): s(x, 8, SKIN)
+        s(0, 8, SKIN_D); s(15, 8, SKIN_D)
     elif arms == "up":  # climber/cheer — arms raised
-        set(3, 5, SKIN); set(12, 5, SKIN)
-        set(3, 6, SKIN); set(12, 6, SKIN)
-    elif arms == "fwd_swing":  # basher arms out front
-        for x in (12, 13, 14): set(x, 7, SKIN)
-        for x in (12, 13, 14): set(x, 8, SKIN_D)
-    elif arms == "fwd_pick":  # digger holding pick down
-        set(12, 7, SKIN); set(12, 8, SKIN)
-        set(11, 9, SKIN); set(11, 10, SKIN)
+        s(3, 5, SKIN); s(12, 5, SKIN)
+        s(3, 6, SKIN); s(12, 6, SKIN)
+        s(3, 7, SKIN_D); s(12, 7, SKIN_D)
+    elif arms == "fwd_swing":  # basher arms forward
+        for x in (12, 13, 14, 15): s(x, 8, SKIN)
+        for x in (12, 13, 14, 15): s(x, 9, SKIN_D)
+    elif arms == "fwd_pick":  # digger holding pick downward
+        s(12, 8, SKIN); s(13, 8, SKIN)
+        s(12, 9, SKIN_D); s(13, 9, SKIN_D)
 
-    # ── Legs/feet
+    # ── Legs/feet (rows 13-15)
     if leg_pose == "together":
-        for x in (5, 6): set(x, 11, ROBE_D); set(x, 12, SKIN_D)
-        for x in (9, 10): set(x, 11, ROBE_D); set(x, 12, SKIN_D)
-        for x in (5, 6, 9, 10): set(x, 13, SKIN_D)
-    elif leg_pose == "split":  # legs apart, walking peak
-        set(4, 11, ROBE_D); set(4, 12, SKIN_D); set(3, 13, SKIN_D)
-        set(11, 11, ROBE_D); set(11, 12, SKIN_D); set(12, 13, SKIN_D)
-        # Inner pair tucked
-        set(7, 11, ROBE_D); set(8, 11, ROBE_D)
-    elif leg_pose == "mid":  # mid-step
-        for x in (5, 6): set(x, 11, ROBE_D)
-        set(6, 12, SKIN_D); set(5, 13, SKIN_D)
-        for x in (9, 10): set(x, 11, ROBE_D)
-        set(9, 12, SKIN_D); set(10, 13, SKIN_D)
+        for x in (6, 7): s(x, 13, ROBE_D)
+        for x in (8, 9): s(x, 13, ROBE_D)
+        s(6, 14, SKIN_D); s(7, 14, SKIN_D)
+        s(8, 14, SKIN_D); s(9, 14, SKIN_D)
+        # feet
+        s(5, 15, PUPIL); s(6, 15, PUPIL)
+        s(9, 15, PUPIL); s(10, 15, PUPIL)
+    elif leg_pose == "split":  # walking peak — legs spread
+        s(4, 13, ROBE_D); s(5, 13, SKIN_D); s(4, 14, SKIN_D)
+        s(3, 15, PUPIL); s(4, 15, PUPIL)
+        s(11, 13, ROBE_D); s(10, 13, SKIN_D); s(11, 14, SKIN_D)
+        s(11, 15, PUPIL); s(12, 15, PUPIL)
+    elif leg_pose == "mid":  # mid-step — one leg forward, one back
+        # back leg
+        s(5, 13, ROBE_D); s(5, 14, SKIN_D)
+        s(4, 15, PUPIL); s(5, 15, PUPIL)
+        # forward leg
+        s(10, 13, ROBE_D); s(10, 14, SKIN_D)
+        s(10, 15, PUPIL); s(11, 15, PUPIL)
 
 
 # ── 1. Walking (4 frames) ──────────────────────────────────────────────
@@ -391,52 +410,88 @@ def make_exit_obj():
 # ── 14. Tileset atlas: 32×16 (dirt+grass tile, steel tile) ─────────────
 
 def make_tileset():
-    im = img(32, 16)
+    # 48x16 — three tiles side by side:
+    #   (0..15)  grass-topped dirt (used on every platform's top row)
+    #   (16..31) plain dirt (used for rows beneath the surface, also for built bricks)
+    #   (32..47) steel
+    im = img(48, 16)
     p = im.load()
 
-    # Tile 0: dirt with grass top (cols 0-15)
-    # Grass row (top 3 rows)
+    # Tile 0: dirt with crisp grass band on top (cols 0-15)
+    # Grass: 4-row band — dark base, two greens, light highlight
     for x in range(16):
-        p[x, 0] = GRASS_D
+        p[x, 0] = GRASS_L
+    for x in range(16):
         p[x, 1] = GRASS
-        p[x, 2] = GRASS_L if (x % 3) else GRASS
-    # Dirt body
-    for y in range(3, 16):
+    for x in range(16):
+        p[x, 2] = GRASS
+    for x in range(16):
+        p[x, 3] = GRASS_D
+    # Scattered light-green blades poking up
+    for x in (1, 4, 8, 11, 14):
+        p[x, 0] = GRASS
+    for x in (3, 7, 12):
+        p[x, 0] = WHITE  # dew/highlight sparkle (single px)
+    # Dirt body (rows 4-15) — base + lighter speckles + dark pockets
+    for y in range(4, 16):
         for x in range(16):
-            # Base dirt
             p[x, y] = DIRT
-            # Lighten checker
-            if (x + y) % 3 == 0:
+            if (x + y * 2) % 5 == 0:
                 p[x, y] = DIRT_L
-            # Dark speckles
-            if (x * 7 + y * 13) % 11 == 0:
+            if (x * 3 + y * 7) % 13 == 0:
                 p[x, y] = DIRT_D
-    # Few grass blades hanging
-    for x in (2, 7, 12):
-        p[x, 3] = GRASS
+            if (x * 5 + y * 11) % 29 == 0:
+                p[x, y] = DIRT_DD
+    # A few small stones embedded
+    for (sx, sy) in [(2, 9), (10, 12), (6, 14)]:
+        p[sx, sy] = STEEL_D
+        if sx + 1 < 16:
+            p[sx + 1, sy] = GREY_D
 
-    # Tile 1: steel (cols 16-31)
+    # Tile 1: pure dirt (cols 16-31) — for subsurface and built bricks
     for y in range(16):
         for x in range(16, 32):
-            p[x, y] = STEEL
-    # Bevel
-    for x in range(16, 32):
+            p[x, y] = DIRT_D
+            lx = x - 16
+            if (lx + y * 2) % 5 == 0:
+                p[x, y] = DIRT
+            if (lx * 3 + y * 7) % 11 == 0:
+                p[x, y] = DIRT_DD
+            if (lx * 5 + y * 11) % 19 == 0:
+                p[x, y] = DIRT_L
+    # Subtle horizontal seams every 4 rows to give "packed earth" texture
+    for y in (3, 7, 11):
+        for x in range(16, 32):
+            if (x + y) % 4 == 0:
+                p[x, y] = DIRT_DD
+
+    # Tile 2: steel (cols 32-47) — silver with horizontal striped pattern
+    for y in range(16):
+        for x in range(32, 48):
+            band = y // 2
+            if band % 2 == 0:
+                p[x, y] = STEEL
+            else:
+                p[x, y] = STEEL_D
+    # Bevels
+    for x in range(32, 48):
         p[x, 0] = STEEL_L
     for y in range(16):
-        p[16, y] = STEEL_L
-        p[31, y] = STEEL_D
-    for x in range(16, 32):
+        p[32, y] = STEEL_L
+    for x in range(32, 48):
         p[x, 15] = STEEL_D
-    # Rivets at corners
-    for (rx, ry) in [(18, 2), (29, 2), (18, 13), (29, 13)]:
+    for y in range(16):
+        p[47, y] = STEEL_D
+    # Rivets at corners — light dome highlight
+    for (rx, ry) in [(34, 2), (45, 2), (34, 13), (45, 13)]:
         p[rx, ry] = STEEL_D
         p[rx + 1, ry] = STEEL_D
         p[rx, ry + 1] = STEEL_D
         p[rx + 1, ry + 1] = STEEL_D
         p[rx, ry] = STEEL_L
-    # Shine line
-    for x in range(20, 28):
-        p[x, 6] = STEEL_L
+    # Specular shine across middle band
+    for x in range(36, 44):
+        p[x, 7] = STEEL_L
 
     return im
 
@@ -444,20 +499,38 @@ def make_tileset():
 # ── 15. Background tile / parallax (optional sky gradient) ─────────────
 
 def make_bg_sky():
-    im = img(64, 64)
+    # Tall gradient — dark blue at the top fading to nearly black at the bottom.
+    h = 240
+    im = img(64, h)
     p = im.load()
-    for y in range(64):
-        t = y / 63.0
-        r = int(0x1a * (1 - t) + 0x0d * t)
-        g = int(0x1a * (1 - t) + 0x0d * t)
-        b = int(0x3e * (1 - t) + 0x2b * t)
+    for y in range(h):
+        t = y / float(h - 1)
+        if t < 0.5:
+            k = t / 0.5
+            r = int(SKY_TOP[0] * (1 - k) + SKY_MID[0] * k)
+            g = int(SKY_TOP[1] * (1 - k) + SKY_MID[1] * k)
+            b = int(SKY_TOP[2] * (1 - k) + SKY_MID[2] * k)
+        else:
+            k = (t - 0.5) / 0.5
+            r = int(SKY_MID[0] * (1 - k) + SKY_BOT[0] * k)
+            g = int(SKY_MID[1] * (1 - k) + SKY_BOT[1] * k)
+            b = int(SKY_MID[2] * (1 - k) + SKY_BOT[2] * k)
         for x in range(64):
             p[x, y] = (r, g, b, 255)
-    # Scattered stars
-    star_positions = [(5, 8), (17, 4), (29, 11), (44, 6), (55, 14),
-                       (9, 22), (37, 26), (58, 31), (12, 40), (49, 47)]
+    # Scattered stars (only in the upper half where sky is visible)
+    star_positions = [
+        (5, 8), (17, 4), (29, 11), (44, 6), (55, 14),
+        (9, 22), (37, 26), (58, 31), (12, 40), (49, 47),
+        (22, 18), (50, 22), (3, 32), (40, 38), (15, 55),
+        (33, 60), (60, 70), (8, 80), (45, 90), (25, 100),
+    ]
     for (x, y) in star_positions:
-        p[x, y] = WHITE
+        if 0 <= y < h:
+            p[x, y] = WHITE
+            # Soft halo around the brightest stars
+            if (x * y) % 7 == 0 and 0 < x < 63 and 0 < y < h - 1:
+                p[x - 1, y] = (180, 180, 200, 255)
+                p[x + 1, y] = (180, 180, 200, 255)
     return im
 
 

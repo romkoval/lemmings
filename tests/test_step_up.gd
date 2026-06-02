@@ -1,0 +1,81 @@
+extends "res://addons/gut/test.gd"
+
+const LemmingScene: PackedScene = preload("res://entities/lemming.tscn")
+const LevelScene: PackedScene = preload("res://scenes/game/level.tscn")
+
+
+var _level: Level
+var _lemming: Lemming
+
+
+func before_each() -> void:
+	_level = LevelScene.instantiate()
+	add_child_autoqfree(_level)
+	_lemming = LemmingScene.instantiate()
+	_level.add_child(_lemming)
+	# Keep it tracked for cleanup but it's parented to the level, not the test.
+	autoqfree(_lemming)
+
+
+func _place_terrain(tile: Vector2i) -> void:
+	_level.tile_map.set_cell(Level.TERRAIN_LAYER, tile, 0, Vector2i.ZERO)
+
+
+func test_can_step_up_with_one_tile_wall() -> void:
+	# Floor under the lemming.
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))  # floor
+	_place_terrain(Vector2i(6, 29))  # floor in front
+	_place_terrain(Vector2i(6, 28))  # 1-tile wall in front at body level
+	# Nothing above the wall.
+	assert_true(_lemming.can_step_up())
+
+
+func test_cannot_step_up_when_wall_is_taller() -> void:
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	_place_terrain(Vector2i(6, 29))
+	_place_terrain(Vector2i(6, 28))  # wall at body level
+	_place_terrain(Vector2i(6, 27))  # also blocked above
+	assert_false(_lemming.can_step_up())
+
+
+func test_cannot_step_up_when_no_wall_in_front() -> void:
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	# No tile at (6, 28).
+	assert_false(_lemming.can_step_up())
+
+
+func test_builder_records_diagonal_start_tile() -> void:
+	# Lemming standing on tile (5, 29) facing right.
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	var skill: BuilderSkill = BuilderSkill.new()
+	skill.apply(_lemming)
+	# First brick should go one tile forward at body level: (6, 28).
+	assert_eq(skill._start_tile, Vector2i(6, 28))
+	assert_eq(skill._start_dir, 1)
+
+
+func test_builder_lays_diagonal_bricks() -> void:
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	var skill: BuilderSkill = BuilderSkill.new()
+	skill.apply(_lemming)
+	# Force a brick placement by ticking past TICKS_PER_STEP.
+	for i in range(BuilderSkill.TICKS_PER_STEP):
+		skill.tick(_lemming)
+	# After one step, brick must exist at the start tile.
+	var has_brick: bool = _level.tile_map.get_cell_source_id(
+		Level.TERRAIN_LAYER, Vector2i(6, 28)
+	) != -1
+	assert_true(has_brick, "brick should be placed at (6, 28)")
+	assert_eq(skill.steps_placed, 1)
+	# Lemming should be one tile up + one tile forward.
+	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)

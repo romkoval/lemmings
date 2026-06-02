@@ -21,6 +21,15 @@ func _ready() -> void:
 	pause_button.pressed.connect(func(): pause_pressed.emit())
 	nuke_button.pressed.connect(func(): nuke_pressed.emit())
 	skill_panel.skill_selected.connect(func(name: String): skill_chosen.emit(name))
+	for label in [saved_label, spawned_label, timer_label]:
+		if label:
+			label.add_theme_font_size_override("font_size", 22)
+			label.add_theme_color_override("font_color", Color.WHITE)
+			label.add_theme_color_override("font_outline_color", Color.BLACK)
+			label.add_theme_constant_override("outline_size", 3)
+	for btn in [pause_button, nuke_button]:
+		if btn:
+			btn.add_theme_font_size_override("font_size", 18)
 
 
 func _process(delta: float) -> void:

@@ -12,8 +12,11 @@ var _current_count: int = 0
 func _ready() -> void:
 	count_label = Label.new()
 	count_label.text = "0"
-	count_label.add_theme_font_size_override("font_size", 12)
-	count_label.position = Vector2(2, 2)
+	count_label.add_theme_font_size_override("font_size", 18)
+	count_label.add_theme_color_override("font_color", Color.WHITE)
+	count_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	count_label.add_theme_constant_override("outline_size", 3)
+	count_label.position = Vector2(4, 2)
 	add_child(count_label)
 	pressed.connect(_on_pressed)
 
