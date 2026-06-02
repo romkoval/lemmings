@@ -8,6 +8,15 @@
 [node name="Level" type="Node2D"]
 script = ExtResource("1_level")
 
+[node name="Background" type="ColorRect" parent="."]
+z_index = -20
+offset_left = -64.0
+offset_top = -64.0
+offset_right = 784.0
+offset_bottom = 720.0
+color = Color(0.102, 0.102, 0.243, 1)
+mouse_filter = 2
+
 [node name="TileMap" type="TileMap" parent="."]
 tile_set = ExtResource("2_tileset")
 format = 2

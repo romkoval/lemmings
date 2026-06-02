@@ -38,8 +38,7 @@ var bomb_timer: float = 0.0
 var active_skill_node: RefCounted = null
 var lemming_id: int = -1
 
-@onready var body_visual: ColorRect = $Body
-@onready var direction_indicator: ColorRect = $Direction
+@onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
 
 func _ready() -> void:
@@ -146,9 +145,9 @@ func _process_exploding(delta: float) -> void:
 	velocity.y = GRAVITY
 	velocity.x = WALK_SPEED * direction
 	move_and_slide()
-	if body_visual:
+	if sprite:
 		var phase: float = fposmod(bomb_timer, 0.5)
-		body_visual.color = Color(1.0, 0.3, 0.3) if phase > 0.25 else Color(1.0, 1.0, 0.3)
+		sprite.modulate = Color(1.0, 0.4, 0.4) if phase > 0.25 else Color(1.0, 1.0, 0.4)
 	if bomb_timer <= 0.0:
 		if active_skill_node and active_skill_node.has_method("detonate"):
 			active_skill_node.detonate(self)
@@ -217,26 +216,26 @@ func die(cause: String) -> void:
 
 
 func _update_visual() -> void:
-	if body_visual == null:
+	if sprite == null:
 		return
+	# Sprite art faces right by default; flip when walking left.
+	sprite.flip_h = direction < 0
+	# Reset bomb-flash tint when leaving EXPLODING.
+	if current_state != State.EXPLODING:
+		sprite.modulate = Color(1, 1, 1, 1)
+	var anim: StringName = &"walk"
 	match current_state:
-		State.WALKING:
-			body_visual.color = Color(0.2, 0.7, 0.2)
-		State.FALLING:
-			body_visual.color = Color(0.6, 0.6, 0.2)
-		State.FLOATING:
-			body_visual.color = Color(0.3, 0.8, 0.8)
-		State.CLIMBING:
-			body_visual.color = Color(0.8, 0.5, 0.2)
-		State.BLOCKING:
-			body_visual.color = Color(0.8, 0.2, 0.2)
-		State.BUILDING:
-			body_visual.color = Color(0.9, 0.7, 0.3)
-		State.BASHING, State.MINING, State.DIGGING:
-			body_visual.color = Color(0.5, 0.3, 0.7)
-		State.EXPLODING:
-			body_visual.color = Color(1.0, 0.3, 0.3)
-		_:
-			body_visual.color = Color(0.4, 0.4, 0.4)
-	if direction_indicator:
-		direction_indicator.position.x = 8 if direction > 0 else 0
+		State.WALKING:    anim = &"walk"
+		State.FALLING:    anim = &"fall"
+		State.FLOATING:   anim = &"float"
+		State.CLIMBING:   anim = &"climb"
+		State.BLOCKING:   anim = &"block"
+		State.BUILDING:   anim = &"build"
+		State.BASHING:    anim = &"bash"
+		State.MINING:     anim = &"mine"
+		State.DIGGING:    anim = &"dig"
+		State.EXPLODING:  anim = &"bomb"
+		State.EXITED:     anim = &"exit"
+		State.SPLAT, State.DYING: anim = &"die"
+	if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim):
+		sprite.play(anim)
