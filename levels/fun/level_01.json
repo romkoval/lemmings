@@ -17,11 +17,22 @@
     "miner": 0,
     "digger": 0
   },
-  "entrance_pos": [80, 64],
+  "entrance_pos": [
+    80,
+    460
+  ],
   "entrance_direction": 1,
-  "exit_pos": [560, 432],
+  "exit_pos": [
+    560,
+    462
+  ],
   "terrain_rects": [
-    {"x": 0, "y": 30, "w": 45, "h": 4}
+    {
+      "x": 0,
+      "y": 30,
+      "w": 45,
+      "h": 4
+    }
   ],
   "steel_rects": []
 }

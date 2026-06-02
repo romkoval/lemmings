@@ -17,14 +17,28 @@
     "miner": 0,
     "digger": 5
   },
-  "entrance_pos": [80, 64],
-  "entrance_direction": 1,
-  "exit_pos": [240, 432],
-  "terrain_rects": [
-    {"x": 0, "y": 6, "w": 45, "h": 20},
-    {"x": 0, "y": 30, "w": 45, "h": 4}
+  "entrance_pos": [
+    80,
+    76
   ],
-  "steel_rects": [
-    {"x": 0, "y": 30, "w": 45, "h": 4}
-  ]
+  "entrance_direction": 1,
+  "exit_pos": [
+    240,
+    82
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 6,
+      "w": 45,
+      "h": 20
+    },
+    {
+      "x": 0,
+      "y": 30,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "steel_rects": []
 }
