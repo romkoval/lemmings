@@ -25,6 +25,9 @@ const WALK_SPEED: float = 60.0
 const GRAVITY: float = 120.0
 const MAX_FALL_PIXELS: int = 64
 const CLIMB_SPEED: float = 30.0
+# Downward bias applied while walking on the ground (see _process_walking). Much
+# smaller than GRAVITY so 45° ramps remain climbable.
+const GROUND_STICK: float = 20.0
 const BOMB_FUSE_SECONDS: float = 5.0
 # Anything that falls past the bottom of the playfield is lost (ТЗ §1.3).
 # Without this a lemming that walks off the map falls forever and the level
@@ -44,6 +47,10 @@ var bomb_timer: float = 0.0
 var active_skill_node: RefCounted = null
 var lemming_id: int = -1
 var highlighted: bool = false
+# Gradual step-up onto a stair/terrain step (see _try_step_up): while true the
+# body slides toward _step_target at walking speed instead of teleporting.
+var _stepping_up: bool = false
+var _step_target: Vector2 = Vector2.ZERO
 
 @onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
@@ -85,6 +92,7 @@ func change_state(new_state: State) -> void:
 		return
 	var old: State = current_state
 	current_state = new_state
+	_stepping_up = false
 	state_changed.emit(old, new_state)
 	_update_visual()
 	if new_state == State.FALLING:
@@ -93,30 +101,56 @@ func change_state(new_state: State) -> void:
 
 
 func _process_walking(delta: float) -> void:
-	velocity.y = GRAVITY
+	# Mid-climb onto a step: slide toward the step top at walking speed and do
+	# nothing else until we arrive (see _try_step_up / _advance_step_up).
+	if _stepping_up:
+		_advance_step_up(delta)
+		return
+	# A blocker stops walkers by proximity, not by physical collision: lemmings
+	# share no collision mask with each other (mask = terrain only), so two bodies
+	# pass straight through. Detect the blocker ahead and turn before moving.
+	if _is_blocker_at_front():
+		turn_around()
+		return
+	# Only a small downward "stick" force while grounded — NOT full gravity. On a
+	# 45° slope full gravity's down-slope component (≈0.7·GRAVITY) would overpower
+	# the walk speed and the lemming could never climb; a light bias lets floor
+	# snapping hug slopes while horizontal speed still carries it uphill.
+	velocity.y = GROUND_STICK
 	velocity.x = WALK_SPEED * direction
 	move_and_slide()
 	if not is_on_floor():
 		change_state(State.FALLING)
 		return
+	# Walkable slopes are carried by move_and_slide as floor, so the lemming glides
+	# up/down ramps. Only a *near-vertical* obstacle in the travel direction counts
+	# as a wall — there we step up a single tile, climb, or turn. A 45° ramp normal
+	# (n.y≈-0.7) is well clear of this test, so ramps never trigger a turn.
+	if _hit_vertical_wall():
+		if _is_blocker_at_front():
+			turn_around()
+			return
+		# Try to step up over a 1-tile-high obstacle (e.g. builder stairs).
+		if _try_step_up():
+			return
+		if is_climber:
+			change_state(State.CLIMBING)
+			return
+		turn_around()
+		return
+
+
+# True only when a slide collision this frame is a near-vertical wall facing the
+# lemming (steeper than any walkable slope), so ramps/floors don't count.
+func _hit_vertical_wall() -> bool:
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		if col == null:
 			continue
 		var n: Vector2 = col.get_normal()
-		if abs(n.x) > 0.5:
-			var blocker_hit: bool = _is_blocker_at_front()
-			if blocker_hit:
-				turn_around()
-				return
-			# Try to step up over a 1-tile-high obstacle (e.g. builder stairs).
-			if _try_step_up():
-				return
-			if is_climber:
-				change_state(State.CLIMBING)
-				return
-			turn_around()
-			return
+		if absf(n.y) < 0.35 and absf(n.x) > 0.85 and signf(n.x) == -direction:
+			return true
+	return false
 
 
 func _process_falling(delta: float) -> void:
@@ -226,7 +260,7 @@ func _get_level() -> Level:
 # tile with empty space above it. Used by step-up over builder stairs.
 func can_step_up() -> bool:
 	var level: Level = _get_level()
-	if level == null or level.tile_map == null:
+	if level == null or level.terrain_layer == null:
 		return false
 	# +18 (not +16): the body settles ~1px above the floor, so a +16 probe reads
 	# the empty cell above the floor and a 1-tile step (e.g. a builder brick at
@@ -234,20 +268,12 @@ func can_step_up() -> bool:
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var feet_tile: Vector2i = level.world_to_tile(feet_world)
 	var wall_tile: Vector2i = feet_tile + Vector2i(0, -1)
-	if not _is_solid(level, wall_tile):
+	if not level.is_solid_at(wall_tile):
 		return false
 	var above_tile: Vector2i = wall_tile + Vector2i(0, -1)
-	if _is_solid(level, above_tile):
+	if level.is_solid_at(above_tile):
 		return false
 	return true
-
-
-func _is_solid(level: Level, tile: Vector2i) -> bool:
-	if level.tile_map.get_cell_source_id(Level.TERRAIN_LAYER, tile) != -1:
-		return true
-	if level.tile_map.get_cell_source_id(Level.STEEL_LAYER, tile) != -1:
-		return true
-	return false
 
 
 func _try_step_up() -> bool:
@@ -256,13 +282,30 @@ func _try_step_up() -> bool:
 	var level: Level = _get_level()
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
-	# Snap feet onto the step top AND advance onto it. The collision touches the
-	# step at its near edge, so the body is still mostly beside it — lifting Y
-	# alone would leave the lemming hovering over empty space and it would just
-	# fall back. Move forward so the body lands on the step tile.
-	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
-	global_position.x = wall_tile.x * Level.TILE_SIZE + 4
+	var tile_left: float = float(wall_tile.x * Level.TILE_SIZE)
+	var target_y: float = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
+	# Land the body centre a few px onto the step from the side it entered, so it's
+	# supported by the step tile instead of hovering beside it. Symmetric in both
+	# directions (an absolute-tile-X snap jumped a full tile going right but barely
+	# moved going left).
+	var target_x: float = tile_left - 4.0 if direction > 0 else tile_left + 4.0
+	# Climb onto the step gradually rather than teleporting: an instant jump moved
+	# the body ~18px in one frame, so the crowd ascended a staircase about twice as
+	# fast as they walk on flat ground. Sliding toward the step top at WALK_SPEED
+	# keeps stair travel no faster than flat walking (_advance_step_up).
+	_step_target = Vector2(target_x, target_y)
+	_stepping_up = true
 	return true
+
+
+func _advance_step_up(delta: float) -> void:
+	var to_target: Vector2 = _step_target - global_position
+	var step_len: float = WALK_SPEED * delta
+	if to_target.length() <= step_len:
+		global_position = _step_target
+		_stepping_up = false
+	else:
+		global_position += to_target.normalized() * step_len
 
 
 func turn_around() -> void:

@@ -85,6 +85,21 @@ MOON   = (0xfa, 0xf0, 0xc4, 255)
 MOON_D = (0xc0, 0xa8, 0x70, 255)
 LAMP_GLOW=(0xff, 0xe6, 0x88, 255)
 LAMP_DK= (0x66, 0x44, 0x18, 255)
+# Lava-cavern background (matches the original's molten-rock walls)
+CAVE_DK = (0x0a, 0x06, 0x08, 255)
+CAVE_MD = (0x16, 0x0a, 0x0a, 255)
+ROCK_DD = (0x3a, 0x16, 0x0c, 255)
+ROCK_D  = (0x6e, 0x28, 0x12, 255)
+ROCK    = (0xa8, 0x42, 0x18, 255)
+ROCK_L  = (0xd8, 0x6a, 0x22, 255)
+ROCK_LL = (0xf2, 0x9a, 0x3a, 255)
+EMBER   = (0xff, 0xcc, 0x55, 255)
+# Skill-icon accents
+ICON_OUT= (0x10, 0x0c, 0x14, 255)   # near-black outline for contrast
+PICK_H  = (0x8a, 0x5a, 0x2a, 255)   # pick / tool handle (wood)
+PICK_HD = (0x5a, 0x38, 0x18, 255)
+METAL   = (0xc8, 0xcc, 0xd2, 255)
+METAL_D = (0x7a, 0x80, 0x88, 255)
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -469,125 +484,115 @@ def make_exit_obj():
 #   4: dirt-with-rock  5: steel plate   6: steel rivet   7: steel warning
 
 def _draw_dirt_body(im, x0, *, seed=0, variant="A"):
-    """Fill a 16x16 region starting at column x0 with dirt earth pattern."""
+    """Rocky, cratered earth. Warmer tone, diagonal cracks and embedded boulders
+    so a stack of these reads as a rough rock face, not flat brown squares."""
     p = im.load()
+
+    def s(x, y, c):
+        if 0 <= x < 16 and 0 <= y < 16:
+            p[x0 + x, y] = c
+
     for y in range(16):
         for x in range(16):
-            ax = x0 + x
-            base = DIRT_D
-            n = (x * 7 + y * 13 + seed) & 0xff
+            n = (x * 7 + y * 13 + seed * 17) & 0xff
             n2 = (x * 11 + y * 5 + seed * 3) & 0xff
-            if n < 80:
+            if n < 50:
+                base = DIRT_D
+            elif n < 120:
                 base = DIRT
-            elif n < 110:
+            elif n < 175:
                 base = DIRT_L
-            if n2 < 40:
-                base = DIRT_DD
-            elif n2 > 230:
+            else:
                 base = DIRT_LL
-            p[ax, y] = base
-    # Pack-soil seams every few rows (horizontal striations)
-    seams = {"A": (4, 9, 13), "B": (3, 8, 12), "C": (5, 10, 14)}.get(variant, (4, 9, 13))
-    for y in seams:
-        for x in range(16):
-            if (x + y + seed) % 3 != 0:
-                p[x0 + x, y] = DIRT_DD
-    # Variant-specific embellishments
-    if variant == "B":
-        # Tangled roots
-        roots = [(2, 6), (3, 7), (4, 8), (5, 9), (6, 10),
-                 (10, 4), (11, 5), (12, 6), (13, 7),
-                 (1, 11), (2, 12), (3, 13)]
-        for (rx, ry) in roots:
-            p[x0 + rx, ry] = ROOT_DK
-    elif variant == "C":
-        # Embedded stone
-        stone_cluster = [
-            (5, 6), (6, 6), (7, 6), (8, 6),
-            (4, 7), (5, 7), (6, 7), (7, 7), (8, 7), (9, 7),
-            (4, 8), (5, 8), (6, 8), (7, 8), (8, 8), (9, 8), (10, 8),
-            (5, 9), (6, 9), (7, 9), (8, 9), (9, 9),
-            (6, 10), (7, 10), (8, 10),
-        ]
-        for (sx, sy) in stone_cluster:
-            p[x0 + sx, sy] = STONE
-        # Stone highlights
-        for (sx, sy) in [(5, 6), (6, 6), (5, 7)]:
-            p[x0 + sx, sy] = STONE_L
-        # Stone shadow
-        for (sx, sy) in [(9, 8), (10, 8), (8, 10), (9, 9)]:
-            p[x0 + sx, sy] = STONE_D
-    else:  # "A" — small pebbles
-        pebbles = [(2, 5), (11, 7), (4, 11), (13, 13)]
-        for (px_, py_) in pebbles:
-            p[x0 + px_, py_] = STONE
-            if px_ + 1 < 16:
-                p[x0 + px_ + 1, py_] = STONE_D
+            if n2 < 26:
+                base = DIRT_DD
+            s(x, y, base)
+
+    # Irregular diagonal fissures — the single biggest cue against a grid look.
+    cracks = {
+        "A": [(2, 1), (3, 2), (3, 3), (4, 4), (11, 3), (12, 4), (12, 5), (13, 6)],
+        "B": [(5, 0), (5, 1), (6, 2), (6, 3), (7, 4), (1, 9), (2, 10), (3, 11)],
+        "C": [(9, 1), (9, 2), (10, 3), (10, 4), (4, 10), (5, 11), (6, 12), (13, 9)],
+    }.get(variant, [])
+    for (cx, cy) in cracks:
+        s(cx, cy, DIRT_DD)
+        s(cx, cy + 1, ROOT_DK)
+
+    # Embedded boulders (round clusters with lit top / shadowed underside).
+    rocks = {
+        "A": [(11, 11, 2), (4, 13, 1)],
+        "B": [(4, 6, 2), (12, 12, 1)],
+        "C": [(7, 8, 3), (12, 4, 1)],
+    }.get(variant, [])
+    for (rx, ry, rr) in rocks:
+        for dy in range(-rr, rr + 1):
+            for dx in range(-rr, rr + 1):
+                if dx * dx + dy * dy <= rr * rr:
+                    s(rx + dx, ry + dy, STONE)
+        s(rx, ry - rr, STONE_L)
+        s(rx - 1, ry - rr + 1 if rr > 1 else ry, STONE_L)
+        for dx in range(-rr, rr + 1):
+            s(rx + dx, ry + rr, STONE_D)
 
 
 def _draw_grass_top(im, x0, *, variant="A"):
-    """Fill 16x16 starting at x0 with grass surface (top ~6 rows) over dirt (rows 6-15)."""
+    """Rolling grass surface over rocky subsoil. The grass cap height varies per
+    column (rows 0..4) so the walked-on edge is ragged and organic instead of a
+    ruler-straight line — collision stays full-tile, this is purely the silhouette."""
     p = im.load()
-    # Dirt subsoil under the grass band
     seed = {"A": 11, "B": 23}.get(variant, 11)
-    for y in range(6, 16):
+
+    def s(x, y, c):
+        if 0 <= x < 16 and 0 <= y < 16:
+            p[x0 + x, y] = c
+
+    # Rocky subsoil rows 5..15 (same texture family as the dirt body).
+    for y in range(5, 16):
         for x in range(16):
-            base = DIRT
             n = (x * 7 + y * 13 + seed) & 0xff
-            if n < 60:
+            if n < 50:
                 base = DIRT_D
-            elif n > 200:
+            elif n < 180:
+                base = DIRT
+            else:
                 base = DIRT_L
-            p[x0 + x, y] = base
-    # Horizontal "packed soil" line where grass meets dirt
+            s(x, y, base)
+    for x in range(16):           # packed-soil seam where grass meets earth
+        if x % 3:
+            s(x, 5, DIRT_DD)
+
+    # Ragged grass cap: per-column top offset 0..3 (0 = tallest, pokes to row 0).
     for x in range(16):
-        if x % 3 != 0:
-            p[x0 + x, 6] = DIRT_DD
+        off = (x * 5 + seed * 3 + (x * x) % 7) % 4
+        top = off
+        for y in range(top, 5):
+            if y == top:
+                c = GRASS_LL if (x * 3 + seed) % 5 == 0 else GRASS_L
+            elif y >= 4:
+                c = GRASS_D
+            elif y == 3:
+                c = GRASS
+            else:
+                c = GRASS_L if (x + seed) % 4 == 0 else GRASS
+            s(x, y, c)
+        # a few blades droop one extra pixel for an overhang feel
+        if (x + seed) % 6 == 0 and top > 0:
+            s(x, top - 1, GRASS)
 
-    # Grass band — 5 rows tall, with chunky organic blades
-    fill(im, x0, 0, x0 + 15, 0, T)  # leave top row transparent for irregularity
-    # Row 1 — tallest blades
-    for x in range(16):
-        p[x0 + x, 1] = T
-    # Row 2-5 — grass body
-    fill(im, x0, 2, x0 + 15, 2, GRASS_LL)
-    fill(im, x0, 3, x0 + 15, 3, GRASS_L)
-    fill(im, x0, 4, x0 + 15, 4, GRASS)
-    fill(im, x0, 5, x0 + 15, 5, GRASS_D)
-
-    if variant == "A":
-        # Tall scattered blades poking into rows 0-1
-        blade_xs = [(1, 4), (3, 3), (7, 4), (10, 3), (12, 4), (14, 3)]
-        for (bx, bh) in blade_xs:
-            top_y = 5 - bh
-            for y in range(top_y, 2):
-                p[x0 + bx, y] = GRASS
-            p[x0 + bx, top_y] = GRASS_L
-        # Single dewdrop sparkle
-        p[x0 + 5, 2] = WHITE
-        p[x0 + 13, 2] = (0xcc, 0xff, 0xcc, 255)
-    else:  # variant B with flowers
-        blade_xs = [(2, 3), (5, 4), (9, 3), (11, 4), (14, 3)]
-        for (bx, bh) in blade_xs:
-            top_y = 5 - bh
-            for y in range(top_y, 2):
-                p[x0 + bx, y] = GRASS
-            p[x0 + bx, top_y] = GRASS_L
-        # Flowers — small 1px caps with stem
-        # Pink flower at x=7
-        p[x0 + 7, 1] = FLOWER_R
-        p[x0 + 6, 2] = FLOWER_R; p[x0 + 8, 2] = FLOWER_R
-        p[x0 + 7, 2] = FLOWER_Y  # yellow center
-        p[x0 + 7, 3] = GRASS_D  # stem
-        # White daisy at x=13
-        p[x0 + 13, 1] = FLOWER_W
-        p[x0 + 12, 2] = FLOWER_W; p[x0 + 14, 2] = FLOWER_W
-        p[x0 + 13, 2] = FLOWER_Y
-        p[x0 + 13, 3] = GRASS_D
-
-    # Underside of grass (root tangle into dirt) — micro detail row 6
+    # Roots tangling down into the soil.
     for x in (1, 5, 9, 12, 14):
-        p[x0 + x, 6] = GRASS_DD
+        s(x, 5, GRASS_DD)
+
+    if variant == "B":
+        # Wildflowers nestled in the taller blades.
+        for (fx, fc) in [(4, FLOWER_R), (10, FLOWER_W), (13, FLOWER_Y)]:
+            off = (fx * 5 + seed * 3 + (fx * fx) % 7) % 4
+            ty = max(0, off - 1)
+            s(fx, ty, fc)
+            s(fx, ty + 1, FLOWER_Y if fc != FLOWER_Y else GRASS)
+    else:
+        s(5, 1, WHITE)            # dewdrop sparkle
+        s(12, 0, (0xcc, 0xff, 0xcc, 255))
 
 
 def _draw_steel(im, x0, *, variant="plate"):
@@ -654,19 +659,45 @@ def _draw_steel(im, x0, *, variant="plate"):
             p[x0 + 13, y] = STEEL_D
 
 
+def _draw_ramp(im, x0, y0, dirn):
+    """45° slope tile drawn into the 16×16 cell at (x0,y0). dirn 'R' rises to the
+    right (solid lower-right triangle), 'L' rises to the left. The art's solid
+    region matches the triangular collision polygon in main_tileset.tres exactly,
+    so lemmings walk the diagonal surface smoothly instead of stepping squares."""
+    p = im.load()
+    seed = 7
+    for x in range(16):
+        sy = (15 - x) if dirn == "R" else x          # surface row in this column
+        for y in range(sy, 16):
+            n = (x * 7 + y * 13 + seed) & 0xff
+            base = DIRT_D if n < 50 else (DIRT if n < 150 else DIRT_L)
+            p[x0 + x, y0 + y] = base
+        # grass cap riding the diagonal
+        p[x0 + x, y0 + sy] = GRASS_L
+        if sy + 1 < 16: p[x0 + x, y0 + sy + 1] = GRASS
+        if sy + 2 < 16: p[x0 + x, y0 + sy + 2] = GRASS_D
+        # a couple of embedded pebbles for texture
+        if (x * 5 + seed) % 7 == 0 and sy + 4 < 16:
+            p[x0 + x, y0 + sy + 4] = STONE
+
+
 def make_tileset():
-    """128×16 atlas — 8 tile columns. See module docstring for layout."""
-    im = img(128, 16)
-    # Terrain variants (cols 0..4)
+    """128×32 atlas. Row 0 cols 0..7: grass-A, dirt-A, grass-B, dirt-B, dirt-C,
+    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left."""
+    im = img(128, 32)
+    # Terrain variants (row 0, cols 0..4)
     _draw_grass_top(im, 0, variant="A")
     _draw_dirt_body(im, 16, seed=1, variant="A")
     _draw_grass_top(im, 32, variant="B")
     _draw_dirt_body(im, 48, seed=2, variant="B")
     _draw_dirt_body(im, 64, seed=3, variant="C")
-    # Steel variants (cols 5..7)
+    # Steel variants (row 0, cols 5..7)
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
+    # Ramps (row 1, cols 0..1)
+    _draw_ramp(im, 0, 16, "R")
+    _draw_ramp(im, 16, 16, "L")
     return im
 
 
@@ -679,124 +710,272 @@ def _hsv_lerp(c0, c1, t):
             255)
 
 
+def _clamp8(v):
+    return 0 if v < 0 else (255 if v > 255 else int(v))
+
+
 def make_bg_sky():
-    """720×1280 — matches mobile portrait viewport. Gradient sky, scattered
-    stars, a soft moon glow upper-right, and two layered mountain silhouettes
-    near the horizon zone where most levels place their terrain."""
+    """720×1280 lava-cavern backdrop (filename kept for compatibility). A dark
+    play-area in the centre so terrain and lemmings pop, framed by a glowing
+    molten-rock wall that thickens toward the edges, with stalactites up top and
+    a few embers. Echoes the original game's cave tilesets."""
     W, H = 720, 1280
     im = img(W, H)
     p = im.load()
 
-    horizon_y = 540  # roughly where terrain platforms sit in level scenes
-
-    # Vertical gradient — three-stop (top → upper-mid → horizon hue)
-    for y in range(H):
-        if y < horizon_y:
-            t = y / float(horizon_y)
-            if t < 0.55:
-                k = t / 0.55
-                c = _hsv_lerp(SKY_TOP, SKY_HI, k)
-            else:
-                k = (t - 0.55) / 0.45
-                c = _hsv_lerp(SKY_HI, SKY_MID, k)
+    def rock_shade(t, n):
+        # t: 0 (open cavern) .. 1 (bright rock rim). n: -16..15 texture noise.
+        if t <= 0.0:
+            base = CAVE_DK
+        elif t < 0.18:
+            base = CAVE_MD
+        elif t < 0.36:
+            base = ROCK_DD
+        elif t < 0.58:
+            base = ROCK_D
+        elif t < 0.80:
+            base = ROCK
         else:
-            t = (y - horizon_y) / float(H - horizon_y)
-            c = _hsv_lerp(SKY_MID, SKY_BOT, min(1.0, t * 1.5))
+            base = ROCK_L
+        k = n * 2.2
+        return (_clamp8(base[0] + k), _clamp8(base[1] + k * 0.55),
+                _clamp8(base[2] + k * 0.25), 255)
+
+    # Rock frames all four edges around a large dark play area. `e` is the
+    # normalised distance to the nearest frame edge (0 at the border, 1 dead
+    # centre); rock lives where e is small, the cavern opens up in the middle.
+    BAND = 0.46
+    for y in range(H):
+        ey = min(y, H - 1 - y) / (H * 0.5)
         for x in range(W):
-            p[x, y] = c
+            ex = min(x, W - 1 - x) / (W * 0.5)
+            e = ex if ex < ey else ey
+            # Craggy boundary: two-octave wobble so the wall isn't a clean frame.
+            wob = (0.085 * math.sin(x / 70.0 + y / 110.0)
+                   + 0.05 * math.sin(y / 41.0 - x / 57.0)
+                   + 0.03 * math.sin((x + y) / 23.0))
+            t = (BAND + wob - e) / BAND          # >0 inside the rock band
+            t = 0.0 if t < 0 else (1.0 if t > 1 else t)
+            n = (((x * 13 + y * 7) ^ (x * 5 + y * 11)) & 0x1f) - 16
+            # Mottle the rock with a second coarse band of darker veining.
+            if t > 0 and ((x // 7 + y // 5) ^ (x // 11)) & 3 == 0:
+                n -= 10
+            p[x, y] = rock_shade(t, n)
 
-    # Scattered stars in the upper half only
-    star_seed = [
-        (45, 60), (120, 30), (200, 80), (280, 45), (360, 110), (440, 75),
-        (520, 30), (590, 95), (660, 50),
-        (30, 160), (95, 220), (175, 180), (260, 245), (340, 200), (415, 270),
-        (490, 215), (565, 165), (635, 235), (700, 190),
-        (60, 310), (140, 360), (215, 330), (295, 395), (380, 350),
-        (460, 405), (540, 340), (615, 380), (685, 315),
-        (50, 450), (155, 480), (235, 420), (330, 470), (410, 440),
-        (495, 490), (580, 430), (650, 475),
-    ]
-    for (sx, sy) in star_seed:
-        if 0 <= sx < W and 0 <= sy < H:
-            p[sx, sy] = WHITE
-            # ~half get a halo
-            if (sx + sy) % 3 == 0:
-                if sx - 1 >= 0: p[sx - 1, sy] = (200, 200, 220, 255)
-                if sx + 1 < W: p[sx + 1, sy] = (200, 200, 220, 255)
-                if sy - 1 >= 0: p[sx, sy - 1] = (200, 200, 220, 255)
-                if sy + 1 < H: p[sx, sy + 1] = (200, 200, 220, 255)
-    # A few extra-bright stars with cross-shaped sparkle
-    bright_stars = [(120, 30), (440, 75), (340, 200), (615, 380)]
-    for (sx, sy) in bright_stars:
-        for dx in range(-2, 3):
-            if 0 <= sx + dx < W: p[sx + dx, sy] = WHITE
-        for dy in range(-2, 3):
-            if 0 <= sy + dy < H: p[sx, sy + dy] = WHITE
-
-    # Moon — soft glowing disc, parked top-centre between the typical
-    # entrance (x≈80) and exit (x≈560) world positions so it doesn't
-    # bleed a halo behind those sprites.
-    mx, my, mr = 360, 140, 32
-    for y in range(my - mr - 6, my + mr + 6):
-        for x in range(mx - mr - 6, mx + mr + 6):
-            if not (0 <= x < W and 0 <= y < H):
-                continue
-            d = math.hypot(x - mx, y - my)
-            if d <= mr - 2:
-                p[x, y] = MOON
-            elif d <= mr:
-                p[x, y] = MOON_D
-            elif d <= mr + 5:
-                # Halo blend
-                halo_t = (d - mr) / 5.0
+    # Bright molten veins glowing in the thick rock near the frame edges.
+    for (vx, vy, vlen, ph) in [(60, 200, 160, 0.0), (660, 300, 200, 1.1),
+                               (90, 980, 220, 2.0), (640, 1040, 180, 0.6),
+                               (360, 60, 140, 1.7), (360, 1230, 150, 2.6)]:
+        for i in range(vlen):
+            ang = ph + i * 0.05
+            x = int(vx + math.sin(ang * 1.7) * 18 + (i if vx < W / 2 else -i) * 0.0)
+            y = int(vy + i - vlen // 2)
+            x += int(8 * math.sin(i / 9.0 + ph))
+            if 0 <= x < W and 0 <= y < H:
                 cur = p[x, y]
-                target = MOON_D
-                p[x, y] = (
-                    int(cur[0] * halo_t + target[0] * (1 - halo_t)),
-                    int(cur[1] * halo_t + target[1] * (1 - halo_t)),
-                    int(cur[2] * halo_t + target[2] * (1 - halo_t)),
-                    255)
-    # Moon craters (a couple of darker spots)
-    for (cx, cy, cr) in [(mx - 9, my - 4, 3), (mx + 7, my + 10, 3), (mx - 3, my + 12, 2)]:
-        for y in range(cy - cr, cy + cr + 1):
-            for x in range(cx - cr, cx + cr + 1):
-                if 0 <= x < W and 0 <= y < H and math.hypot(x - cx, y - cy) <= cr:
-                    p[x, y] = MOON_D
+                # only light up where it's already rock (don't bleed into cave)
+                if cur[0] > 0x40 or cur[1] > 0x20:
+                    p[x, y] = ROCK_LL
+                    if x + 1 < W: p[x + 1, y] = EMBER
+                    if y + 1 < H: p[x, y + 1] = ROCK_L
 
-    # Distant mountain silhouettes — two layers near the horizon zone
-    def _mountain(amp, base_y, color, period, phase):
-        for x in range(W):
-            h = int(amp * (0.5 + 0.5 * math.sin(x / period + phase)
-                          + 0.25 * math.sin(x / (period * 0.37) + phase * 2.1)))
-            top = base_y - h
-            for y in range(top, base_y + 1):
-                if 0 <= y < H:
-                    p[x, y] = color
+    # Stalactites hanging from the cavern ceiling into the dark.
+    for (sx, base_len) in [(120, 70), (210, 40), (300, 90), (430, 55),
+                           (520, 75), (610, 45), (680, 60), (60, 50)]:
+        for j in range(base_len):
+            half = max(0, (base_len - j) * 4 // base_len)
+            for dx in range(-half, half + 1):
+                x = sx + dx
+                if 0 <= x < W and j < H:
+                    shade = ROCK_D if abs(dx) >= half else (ROCK if dx <= 0 else ROCK_DD)
+                    p[x, j] = shade
+        p[sx, base_len] = ROCK_L  # wet tip glint
 
-    _mountain(amp=80, base_y=horizon_y - 4, color=HILL_DD, period=110, phase=0.7)
-    _mountain(amp=46, base_y=horizon_y, color=HILL_D, period=70, phase=2.1)
-
-    # Faint ground haze just above the horizon (blue glow)
-    for y in range(horizon_y - 14, horizon_y):
-        for x in range(W):
-            cur = p[x, y]
-            # Tint warmer / blueish along this band only where pixel isn't a mountain or star
-            if cur == HILL_D or cur == HILL_DD or cur == WHITE:
-                continue
-            blend = (y - (horizon_y - 14)) / 14.0
-            tgt = (0x22, 0x30, 0x6e, 255)
-            p[x, y] = (
-                int(cur[0] * (1 - blend * 0.4) + tgt[0] * blend * 0.4),
-                int(cur[1] * (1 - blend * 0.4) + tgt[1] * blend * 0.4),
-                int(cur[2] * (1 - blend * 0.4) + tgt[2] * blend * 0.4),
-                255)
+    # Drifting embers / motes in the open cave for a touch of life.
+    for (ex, ey) in [(240, 380), (300, 520), (180, 640), (470, 440),
+                     (520, 600), (360, 700), (410, 320), (270, 760)]:
+        if 0 <= ex < W and 0 <= ey < H:
+            p[ex, ey] = EMBER
+            if ex + 1 < W: p[ex + 1, ey] = (0xff, 0x99, 0x33, 180)
 
     return im
+
+
+# ── Skill button icons (32×32, transparent, auto-outlined) ──────────────
+
+def _disc(im, cx, cy, r, c):
+    p = im.load()
+    for y in range(cy - r, cy + r + 1):
+        for x in range(cx - r, cx + r + 1):
+            if 0 <= x < im.width and 0 <= y < im.height and (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                p[x, y] = c
+
+
+def _tri(im, cx, cy, dirn, half, c):
+    """Solid triangle, tip at (cx,cy)."""
+    for k in range(half + 1):
+        if dirn == "up":
+            for x in range(cx - k, cx + k + 1): putpx(im, x, cy + k, c)
+        elif dirn == "down":
+            for x in range(cx - k, cx + k + 1): putpx(im, x, cy - k, c)
+        elif dirn == "right":
+            for y in range(cy - k, cy + k + 1): putpx(im, cx - k, y, c)
+        elif dirn == "left":
+            for y in range(cy - k, cy + k + 1): putpx(im, cx + k, y, c)
+
+
+def _arrow(im, cx, cy, dirn, length, half, c):
+    """Arrowhead (tip at cx,cy) plus a shaft extending the opposite way."""
+    _tri(im, cx, cy, dirn, half, c)
+    s = max(1, half // 2)
+    if dirn == "up":
+        fill(im, cx - s, cy + half, cx + s, cy + half + length, c)
+    elif dirn == "down":
+        fill(im, cx - s, cy - half - length, cx + s, cy - half, c)
+    elif dirn == "right":
+        fill(im, cx - half - length, cy - s, cx - half, cy + s, c)
+    elif dirn == "left":
+        fill(im, cx + half, cy - s, cx + half + length, cy + s, c)
+
+
+def _outline(im, c=ICON_OUT):
+    """Wrap every opaque shape in a 1px dark border for contrast on any panel."""
+    p = im.load()
+    W, Hh = im.size
+    edge = []
+    for y in range(Hh):
+        for x in range(W):
+            if p[x, y][3] != 0:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                           (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < W and 0 <= ny < Hh and p[nx, ny][3] == 255 and p[nx, ny] != c:
+                    edge.append((x, y))
+                    break
+    for (x, y) in edge:
+        p[x, y] = c
+
+
+def _mini_lem(im, ox, oy):
+    """Tiny 8×13 lemming (green hair, skin face, blue robe) for icons that read
+    best with a little worker in them."""
+    g, k, r, rd = HAIR, SKIN, ROBE, ROBE_D
+    rows = [
+        (2, 5, g), (1, 6, g), (5, 6, g),
+        (2, 5, k),  # face row handled below
+    ]
+    # head
+    fill(im, ox + 2, oy, ox + 5, oy, g)
+    fill(im, ox + 1, oy + 1, ox + 6, oy + 1, g)
+    fill(im, ox + 2, oy + 2, ox + 5, oy + 3, k)
+    # body
+    fill(im, ox + 1, oy + 4, ox + 6, oy + 9, r)
+    fill(im, ox + 1, oy + 8, ox + 6, oy + 9, rd)
+    # legs
+    fill(im, ox + 1, oy + 10, ox + 2, oy + 12, rd)
+    fill(im, ox + 5, oy + 10, ox + 6, oy + 12, rd)
+
+
+def make_icon_climber():
+    im = img(32, 32)
+    fill(im, 22, 2, 27, 30, DIRT)                    # wall
+    for y in range(3, 30, 3): fill(im, 22, y, 27, y, DIRT_D)
+    _mini_lem(im, 13, 9)                             # lemming hugging it
+    fill(im, 20, 13, 22, 14, SKIN); fill(im, 20, 17, 22, 18, SKIN)  # arms on wall
+    _arrow(im, 7, 5, "up", 16, 4, GRASS_L)           # upward motion
+    _outline(im); return im
+
+
+def make_icon_floater():
+    im = img(32, 32)
+    for j, yy in enumerate(range(5, 12)):            # umbrella dome
+        w = 3 + j * 2
+        fill(im, 16 - w, yy, 16 + w, yy, ROBE_L if j % 2 == 0 else ROBE)
+    fill(im, 16 - 14, 11, 16 + 14, 11, ROBE_D)       # rim
+    for rx in (16 - 10, 16, 16 + 10):                # ribs
+        for yy in range(5, 12): putpx(im, rx, yy, ROBE_D)
+    fill(im, 15, 12, 16, 19, GREY_D)                 # pole
+    _mini_lem(im, 12, 18)                            # hanging worker
+    _outline(im); return im
+
+
+def make_icon_bomber():
+    im = img(32, 32); p = im.load()
+    bomb = (0x24, 0x22, 0x2c, 255)
+    _disc(im, 15, 21, 8, bomb)
+    _disc(im, 12, 18, 2, GREY)                       # specular
+    for (fx, fy) in [(20, 12), (21, 10), (22, 9), (23, 8), (24, 8)]:
+        putpx(im, fx, fy, PICK_H)                    # fuse
+    p[25, 7] = EMBER; p[24, 6] = YELLOW; p[26, 8] = ORANGE; p[25, 5] = RED
+    _outline(im); return im
+
+
+def make_icon_blocker():
+    im = img(32, 32)
+    fill(im, 2, 7, 6, 25, RED); fill(im, 25, 7, 29, 25, RED)     # stop bars
+    fill(im, 3, 9, 5, 11, WHITE); fill(im, 26, 9, 28, 11, WHITE)  # bar glints
+    _mini_lem(im, 12, 9)
+    fill(im, 9, 13, 13, 14, SKIN); fill(im, 19, 13, 23, 14, SKIN)  # arms out
+    _outline(im); return im
+
+
+def make_icon_builder():
+    im = img(32, 32)
+    for (bx, by) in [(2, 25), (9, 21), (16, 17), (23, 13)]:       # staircase
+        fill(im, bx, by, bx + 7, by + 5, BRICK)
+        fill(im, bx, by, bx + 7, by, DOOR_LL)                    # lit top edge
+        fill(im, bx, by + 5, bx + 7, by + 5, BRICK_D)
+        putpx(im, bx + 3, by + 2, BRICK_D)                       # mortar
+    _mini_lem(im, 22, 1)
+    _outline(im); return im
+
+
+def make_icon_basher():
+    im = img(32, 32)
+    for (rx, ry) in [(23, 13), (26, 11), (24, 17), (28, 15), (25, 21), (22, 19)]:
+        fill(im, rx, ry, rx + 2, ry + 2, DIRT)                   # rubble wall
+    _arrow(im, 21, 16, "right", 12, 5, WHITE)                    # smashing right
+    fill(im, 6, 19, 12, 20, PICK_H)                              # pick handle
+    _outline(im); return im
+
+
+def make_icon_miner():
+    im = img(32, 32); p = im.load()
+    for (rx, ry) in [(20, 20), (23, 22), (25, 25), (22, 26), (27, 24)]:
+        fill(im, rx, ry, rx + 2, ry + 2, DIRT)                   # rubble lower-right
+    for i in range(11):                                          # diagonal arrow
+        for w in range(-2, 3):
+            putpx(im, 6 + i + w, 6 + i, WHITE)
+    _tri(im, 20, 20, "down", 5, WHITE)
+    fill(im, 18, 14, 19, 18, WHITE)
+    _outline(im); return im
+
+
+def make_icon_digger():
+    im = img(32, 32)
+    fill(im, 8, 23, 24, 30, DIRT)                                # ground
+    fill(im, 12, 23, 20, 30, CAVE_DK)                            # the hole
+    _arrow(im, 16, 22, "down", 13, 5, WHITE)                    # digging down
+    fill(im, 11, 4, 21, 6, PICK_H)                              # spade grip
+    _outline(im); return im
+
+
+SKILL_ICONS = {
+    "climber": make_icon_climber, "floater": make_icon_floater,
+    "bomber": make_icon_bomber,   "blocker": make_icon_blocker,
+    "builder": make_icon_builder, "basher": make_icon_basher,
+    "miner": make_icon_miner,     "digger": make_icon_digger,
+}
 
 
 # ── Main ───────────────────────────────────────────────────────────────
 
 def main():
+    for skill, fn in SKILL_ICONS.items():
+        out = SPR / f"skill_{skill}.png"
+        fn().save(out)
+        print(f"wrote {out}  (32x32)")
     targets = [
         (SPR / "lemming_walk.png",  make_walk()),
         (SPR / "lemming_fall.png",  make_fall()),

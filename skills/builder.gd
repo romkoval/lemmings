@@ -2,7 +2,9 @@ class_name BuilderSkill
 extends BaseSkill
 
 const MAX_STEPS: int = 12
-const TICKS_PER_STEP: int = 12
+# ~0.45s per brick at 60fps — the original game lays bricks at a deliberate pace.
+# 12 ticks (0.2s) made the whole staircase appear in ~2s, which read as a glitch.
+const TICKS_PER_STEP: int = 27
 
 var steps_placed: int = 0
 var tick_counter: int = 0

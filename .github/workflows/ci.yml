@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: barichello/godot-ci:4.3
+      image: barichello/godot-ci:4.6
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,16 +36,16 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     container:
-      image: barichello/godot-ci:4.3
+      image: barichello/godot-ci:4.6
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Prepare export templates
         run: |
-          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
-          cp -r /root/.local/share/godot/export_templates/4.3.stable/* \
-            ~/.local/share/godot/export_templates/4.3.stable/ || true
+          mkdir -p ~/.local/share/godot/export_templates/4.6.stable
+          cp -r /root/.local/share/godot/export_templates/4.6.stable/* \
+            ~/.local/share/godot/export_templates/4.6.stable/ || true
 
       - name: Import project
         run: godot --headless --import || true

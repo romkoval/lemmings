@@ -14,6 +14,7 @@ extends SceneTree
 
 const SOLUTIONS: Dictionary = {
 	"fun/level_01": [],  # just walk — no skills needed
+	"fun/level_06": [],  # sandbox: all skills unlocked, walkable to the exit
 	"fun/level_02": [    # digger: one shaft, the rest follow down to the exit
 		{"f": 275, "skill": "digger", "x": 352, "y": 399},
 	],
@@ -85,6 +86,9 @@ func _verify(level: String) -> bool:
 	var win: bool = saved >= req and req > 0 and _gm.current_state == ST_RESULT
 	print("%s : saved=%d/%d dead=%d  ==> %s" % [
 		level, saved, req, int(_gm.dead_count), ("WIN" if win else "FAIL")])
+	if OS.get_cmdline_args().has("--debug-stuck"):
+		for n in root.get_tree().get_nodes_in_group("lemmings"):
+			print("  lem @ ", n.global_position, " state=", n.get("current_state"))
 	game.queue_free()
 	await process_frame
 	_gm.reset()

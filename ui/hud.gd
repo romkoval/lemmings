@@ -40,10 +40,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	# Stop the clock once the level is no longer being played.
-	if GameManager.current_state != GameManager.GameState.PLAYING:
-		time_active = false
-	if time_active and time_remaining > 0:
+	# Only tick the clock while actually playing — so PAUSED simply halts the
+	# countdown and resuming continues it (don't clear time_active on pause, or the
+	# timer would never restart). time_active stays true until the level resolves.
+	if GameManager.current_state == GameManager.GameState.PLAYING and time_active and time_remaining > 0:
 		time_remaining -= delta
 		if time_remaining <= 0:
 			time_remaining = 0
