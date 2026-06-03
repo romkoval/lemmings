@@ -14,5 +14,8 @@ Godot_v4.3-stable_linux.x86_64
 godot
 godot.zip
 
-# Godot 4.4+ script UID sidecars — this project is pinned to 4.3 and does not use them
-*.uid
+# Godot 4.4+ script UID sidecars are committed (this project targets 4.6) — they
+# keep script/resource references stable across renames. Not ignored.
+
+# Local harness runtime state
+.claude/scheduled_tasks.lock

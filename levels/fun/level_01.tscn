@@ -9,15 +9,11 @@
 script = ExtResource("1_script")
 data_path = "res://levels/fun/level_01.json"
 
-[node name="TileMap" type="TileMap" parent="."]
+[node name="TerrainLayer" type="TileMapLayer" parent="."]
 tile_set = ExtResource("2_tileset")
-format = 2
-layer_0/name = "terrain"
-layer_0/enabled = true
-layer_0/tile_data = PackedInt32Array()
-layer_1/name = "steel"
-layer_1/enabled = true
-layer_1/tile_data = PackedInt32Array()
+
+[node name="SteelLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_tileset")
 
 [node name="Entrance" parent="." instance=ExtResource("3_entrance")]
 position = Vector2(80, 64)

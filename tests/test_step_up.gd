@@ -18,7 +18,7 @@ func before_each() -> void:
 
 
 func _place_terrain(tile: Vector2i) -> void:
-	_level.tile_map.set_cell(Level.TERRAIN_LAYER, tile, 0, Vector2i.ZERO)
+	_level.terrain_layer.set_cell(tile, 0, Vector2i.ZERO)
 
 
 func test_can_step_up_with_one_tile_wall() -> void:
@@ -72,9 +72,7 @@ func test_builder_lays_diagonal_bricks() -> void:
 	for i in range(BuilderSkill.TICKS_PER_STEP):
 		skill.tick(_lemming)
 	# After one step, brick must exist at the start tile.
-	var has_brick: bool = _level.tile_map.get_cell_source_id(
-		Level.TERRAIN_LAYER, Vector2i(6, 28)
-	) != -1
+	var has_brick: bool = _level.terrain_layer.get_cell_source_id(Vector2i(6, 28)) != -1
 	assert_true(has_brick, "brick should be placed at (6, 28)")
 	assert_eq(skill.steps_placed, 1)
 	# Lemming should be one tile up + one tile forward.

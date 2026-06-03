@@ -4,7 +4,6 @@ extends Level
 @export var data_path: String = ""
 
 const BG_TEX_PATH := "res://assets/sprites/bg_sky.png"
-const DIRT_SOURCE: int = 0
 const GRASS_ATLAS := Vector2i(0, 0)
 const DIRT_ATLAS := Vector2i(1, 0)
 const RAMP_R_ATLAS := Vector2i(0, 1)   # 45° slope rising to the right
@@ -96,7 +95,7 @@ func _apply_data(d: Dictionary) -> void:
 	for cell in d.get("steel", []):
 		if cell is Array and cell.size() == 2:
 			var c2 := Vector2i(int(cell[0]), int(cell[1]))
-			tile_map.set_cell(STEEL_LAYER, c2, 1, _steel_variant(c2.x, c2.y))
+			steel_layer.set_cell(c2, 1, _steel_variant(c2.x, c2.y))
 	for rect_dict in d.get("steel_rects", []):
 		_fill_steel_rect(rect_dict)
 
@@ -153,9 +152,9 @@ func _build_terrain_rect(rect: Dictionary) -> void:
 		else:                           # level → flat grass (or bare dirt)
 			top_row = y0 - lh
 			top_atlas = _dirt_variant(tx, top_row) if no_grass else _grass_variant(tx, top_row)
-		tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, top_row), DIRT_SOURCE, top_atlas)
+		terrain_layer.set_cell(Vector2i(tx, top_row), DIRT_SOURCE, top_atlas)
 		for ty in range(top_row + 1, y0 + h):
-			tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, ty), DIRT_SOURCE, _dirt_variant(tx, ty))
+			terrain_layer.set_cell(Vector2i(tx, ty), DIRT_SOURCE, _dirt_variant(tx, ty))
 
 
 func _build_terrain_slope(shape: Dictionary) -> void:
@@ -186,7 +185,7 @@ func _build_terrain_slope(shape: Dictionary) -> void:
 				var atlas: Vector2i = DIRT_ATLAS
 				if is_surface:
 					atlas = GRASS_ATLAS
-				tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
+				terrain_layer.set_cell(Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
 
 
 func _build_terrain_column(shape: Dictionary) -> void:
@@ -200,16 +199,16 @@ func _build_terrain_column(shape: Dictionary) -> void:
 			var atlas: Vector2i = DIRT_ATLAS
 			if dy == 0 and has_grass:
 				atlas = GRASS_ATLAS
-			tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
+			terrain_layer.set_cell(Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
 	if has_grass:
 		var shadow_y: int = y0 + h
 		for dx: int in w:
 			for sd: int in range(1, 3):
 				var sy: int = shadow_y + sd
 				if sy < MAX_TILE_Y:
-					var existing: int = tile_map.get_cell_source_id(TERRAIN_LAYER, Vector2i(x0 + dx, sy))
+					var existing: int = terrain_layer.get_cell_source_id(Vector2i(x0 + dx, sy))
 					if existing == -1:
-						tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, sy), DIRT_SOURCE, DIRT_ATLAS)
+						terrain_layer.set_cell(Vector2i(x0 + dx, sy), DIRT_SOURCE, DIRT_ATLAS)
 
 
 func _build_terrain_steps(shape: Dictionary) -> void:
@@ -228,7 +227,7 @@ func _build_terrain_steps(shape: Dictionary) -> void:
 				var atlas: Vector2i = DIRT_ATLAS
 				if dy == 0:
 					atlas = GRASS_ATLAS
-				tile_map.set_cell(TERRAIN_LAYER, Vector2i(sx + dx, sy + dy), DIRT_SOURCE, atlas)
+				terrain_layer.set_cell(Vector2i(sx + dx, sy + dy), DIRT_SOURCE, atlas)
 
 
 func _build_terrain_pit(shape: Dictionary) -> void:
@@ -238,12 +237,12 @@ func _build_terrain_pit(shape: Dictionary) -> void:
 	var h: int = int(shape.get("h", 2))
 	for dy: int in h:
 		for dx: int in w:
-			tile_map.erase_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy))
+			terrain_layer.erase_cell(Vector2i(x0 + dx, y0 + dy))
 
 
 func _add_depth() -> void:
 	var all_cells: Array[Vector2i]
-	all_cells.assign(tile_map.get_used_cells(TERRAIN_LAYER))
+	all_cells.assign(terrain_layer.get_used_cells())
 	var cell_set: Dictionary = {}
 	for c: Vector2i in all_cells:
 		cell_set[c] = true
@@ -254,7 +253,7 @@ func _add_depth() -> void:
 			for d: int in range(1, 4):
 				var depth_cell: Vector2i = Vector2i(cell.x, cell.y + d)
 				if not cell_set.has(depth_cell) and depth_cell.y < MAX_TILE_Y:
-					tile_map.set_cell(TERRAIN_LAYER, depth_cell, DIRT_SOURCE, DIRT_ATLAS)
+					terrain_layer.set_cell(depth_cell, DIRT_SOURCE, DIRT_ATLAS)
 					cell_set[depth_cell] = true
 
 
@@ -269,7 +268,7 @@ func _fill_steel_rect(rect: Dictionary) -> void:
 		for dx in w:
 			var tx: int = x0 + dx
 			var ty: int = y0 + dy
-			tile_map.set_cell(STEEL_LAYER, Vector2i(tx, ty), 1, _steel_variant(tx, ty))
+			steel_layer.set_cell(Vector2i(tx, ty), 1, _steel_variant(tx, ty))
 
 
 # ── Variant pickers ────────────────────────────────────────────────────
@@ -298,15 +297,15 @@ func _steel_variant(x: int, y: int) -> Vector2i:
 
 
 func _build_default_floor_if_empty() -> void:
-	if tile_map == null:
+	if terrain_layer == null:
 		return
 	var has_any: bool = false
-	for cell in tile_map.get_used_cells(TERRAIN_LAYER):
+	for cell in terrain_layer.get_used_cells():
 		has_any = true
 		break
 	if has_any:
 		return
 	for x in range(0, 45):
-		tile_map.set_cell(TERRAIN_LAYER, Vector2i(x, 30), 0, _grass_variant(x, 30))
+		terrain_layer.set_cell(Vector2i(x, 30), 0, _grass_variant(x, 30))
 	for x in range(0, 45):
-		tile_map.set_cell(TERRAIN_LAYER, Vector2i(x, 31), 0, _dirt_variant(x, 31))
+		terrain_layer.set_cell(Vector2i(x, 31), 0, _dirt_variant(x, 31))

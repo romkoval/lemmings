@@ -260,7 +260,7 @@ func _get_level() -> Level:
 # tile with empty space above it. Used by step-up over builder stairs.
 func can_step_up() -> bool:
 	var level: Level = _get_level()
-	if level == null or level.tile_map == null:
+	if level == null or level.terrain_layer == null:
 		return false
 	# +18 (not +16): the body settles ~1px above the floor, so a +16 probe reads
 	# the empty cell above the floor and a 1-tile step (e.g. a builder brick at
@@ -268,20 +268,12 @@ func can_step_up() -> bool:
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var feet_tile: Vector2i = level.world_to_tile(feet_world)
 	var wall_tile: Vector2i = feet_tile + Vector2i(0, -1)
-	if not _is_solid(level, wall_tile):
+	if not level.is_solid_at(wall_tile):
 		return false
 	var above_tile: Vector2i = wall_tile + Vector2i(0, -1)
-	if _is_solid(level, above_tile):
+	if level.is_solid_at(above_tile):
 		return false
 	return true
-
-
-func _is_solid(level: Level, tile: Vector2i) -> bool:
-	if level.tile_map.get_cell_source_id(Level.TERRAIN_LAYER, tile) != -1:
-		return true
-	if level.tile_map.get_cell_source_id(Level.STEEL_LAYER, tile) != -1:
-		return true
-	return false
 
 
 func _try_step_up() -> bool:

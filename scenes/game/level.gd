@@ -2,8 +2,11 @@ class_name Level
 extends Node2D
 
 const TILE_SIZE: int = 16
-const TERRAIN_LAYER: int = 0
-const STEEL_LAYER: int = 1
+# TileSet source ids: terrain tiles live on source 0, steel on source 1. Since
+# the 4.6 migration each occupies its own TileMapLayer node (terrain_layer /
+# steel_layer) instead of two layers of a single deprecated TileMap.
+const DIRT_SOURCE: int = 0
+const STEEL_SOURCE: int = 1
 
 @export var level_id: String = ""
 @export var save_required: int = 1
@@ -21,7 +24,8 @@ const STEEL_LAYER: int = 1
 	"digger": 10,
 }
 
-@onready var tile_map: TileMap = $TileMap
+@onready var terrain_layer: TileMapLayer = $TerrainLayer
+@onready var steel_layer: TileMapLayer = $SteelLayer
 @onready var entrance: Entrance = $Entrance
 @onready var level_exit: LevelExit = $LevelExit
 
@@ -32,28 +36,34 @@ func _ready() -> void:
 
 
 func is_steel_at(tile_coord: Vector2i) -> bool:
-	if tile_map == null:
-		return false
-	return tile_map.get_cell_source_id(STEEL_LAYER, tile_coord) != -1
+	return steel_layer != null and steel_layer.get_cell_source_id(tile_coord) != -1
+
+
+func is_terrain_at(tile_coord: Vector2i) -> bool:
+	return terrain_layer != null and terrain_layer.get_cell_source_id(tile_coord) != -1
+
+
+func is_solid_at(tile_coord: Vector2i) -> bool:
+	return is_terrain_at(tile_coord) or is_steel_at(tile_coord)
 
 
 func remove_terrain_at(tile_coord: Vector2i) -> bool:
-	if tile_map == null:
+	if terrain_layer == null:
 		return false
 	if is_steel_at(tile_coord):
 		return false
-	if tile_map.get_cell_source_id(TERRAIN_LAYER, tile_coord) == -1:
+	if terrain_layer.get_cell_source_id(tile_coord) == -1:
 		return false
-	tile_map.set_cell(TERRAIN_LAYER, tile_coord, -1)
+	terrain_layer.erase_cell(tile_coord)
 	return true
 
 
-func add_terrain_at(tile_coord: Vector2i, source_id: int = 0, atlas: Vector2i = Vector2i.ZERO) -> bool:
-	if tile_map == null:
+func add_terrain_at(tile_coord: Vector2i, source_id: int = DIRT_SOURCE, atlas: Vector2i = Vector2i.ZERO) -> bool:
+	if terrain_layer == null:
 		return false
-	if tile_map.get_cell_source_id(TERRAIN_LAYER, tile_coord) != -1:
+	if terrain_layer.get_cell_source_id(tile_coord) != -1:
 		return false
-	tile_map.set_cell(TERRAIN_LAYER, tile_coord, source_id, atlas)
+	terrain_layer.set_cell(tile_coord, source_id, atlas)
 	return true
 
 

@@ -14,7 +14,7 @@ config/name="Lemmings Clone"
 config/description="A Lemmings puzzle game prototype — guide your lemmings to safety!"
 config/version="0.1.0"
 run/main_scene="res://scenes/menu/main_menu.tscn"
-config/features=PackedStringArray("4.3")
+config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]

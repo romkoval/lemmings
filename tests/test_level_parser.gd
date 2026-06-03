@@ -10,7 +10,7 @@ func test_loads_level_01() -> void:
 
 
 func test_loads_all_fun_levels() -> void:
-	for n in range(1, 6):
+	for n in range(1, 7):
 		var data: Dictionary = LevelManager.load_level_data("fun", n)
 		assert_false(data.is_empty(), "level_%02d.json should parse" % n)
 		assert_has(data, "skill_counts")
@@ -20,7 +20,7 @@ func test_loads_all_fun_levels() -> void:
 
 func test_list_fun_levels() -> void:
 	var files: Array = LevelManager.list_levels("fun")
-	assert_eq(files.size(), 5)
+	assert_eq(files.size(), 6)
 	assert_eq(files[0], "level_01.json")
 
 
