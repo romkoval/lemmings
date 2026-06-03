@@ -93,6 +93,12 @@ func change_state(new_state: State) -> void:
 
 
 func _process_walking(delta: float) -> void:
+	# A blocker stops walkers by proximity, not by physical collision: lemmings
+	# share no collision mask with each other (mask = terrain only), so two bodies
+	# pass straight through. Detect the blocker ahead and turn before moving.
+	if _is_blocker_at_front():
+		turn_around()
+		return
 	velocity.y = GRAVITY
 	velocity.x = WALK_SPEED * direction
 	move_and_slide()
@@ -256,12 +262,18 @@ func _try_step_up() -> bool:
 	var level: Level = _get_level()
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
-	# Snap feet onto the step top AND advance onto it. The collision touches the
-	# step at its near edge, so the body is still mostly beside it — lifting Y
-	# alone would leave the lemming hovering over empty space and it would just
-	# fall back. Move forward so the body lands on the step tile.
+	var tile_left: float = float(wall_tile.x * Level.TILE_SIZE)
+	# Lift the feet onto the step top.
 	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
-	global_position.x = wall_tile.x * Level.TILE_SIZE + 4
+	# Advance the body centre a few px onto the step from the side it entered, so
+	# it's supported by the step tile instead of hovering beside it (which would
+	# make it fall back). Done symmetrically: snapping to an absolute tile X made a
+	# rightward step jump a full tile while a leftward one barely moved — that
+	# asymmetric lurch is what made the staircase feel scary going right.
+	if direction > 0:
+		global_position.x = tile_left - 4.0
+	else:
+		global_position.x = tile_left + 4.0
 	return true
 
 
