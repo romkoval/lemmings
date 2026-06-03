@@ -13,3 +13,6 @@ godot
 Godot_v4.3-stable_linux.x86_64
 godot
 godot.zip
+
+# Godot 4.4+ script UID sidecars — this project is pinned to 4.3 and does not use them
+*.uid
