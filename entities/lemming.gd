@@ -26,6 +26,12 @@ const GRAVITY: float = 120.0
 const MAX_FALL_PIXELS: int = 64
 const CLIMB_SPEED: float = 30.0
 const BOMB_FUSE_SECONDS: float = 5.0
+# Anything that falls past the bottom of the playfield is lost (ТЗ §1.3).
+# Without this a lemming that walks off the map falls forever and the level
+# can never resolve.
+const KILL_PLANE_Y: float = 1280.0
+
+const TERMINAL_STATES: Array = [State.EXITED, State.DYING, State.SPLAT]
 
 @export var direction: int = 1
 
@@ -47,7 +53,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if GameManager.current_state == GameManager.GameState.PAUSED:
+	# Freeze while paused or after the level has resolved (result screen up).
+	if GameManager.current_state != GameManager.GameState.PLAYING:
+		return
+	# Fell off the bottom of the world — count as lost so the level can resolve.
+	if current_state not in TERMINAL_STATES and global_position.y > KILL_PLANE_Y:
+		die("fell_out")
 		return
 	match current_state:
 		State.WALKING:

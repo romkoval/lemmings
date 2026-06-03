@@ -4,6 +4,7 @@ extends Control
 signal pause_pressed()
 signal nuke_pressed()
 signal skill_chosen(skill_name: String)
+signal time_expired()
 
 @onready var skill_panel: SkillPanel = $BottomBar/SkillPanel
 @onready var saved_label: Label = $TopBar/SavedLabel
@@ -33,10 +34,15 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# Stop the clock once the level is no longer being played.
+	if GameManager.current_state != GameManager.GameState.PLAYING:
+		time_active = false
 	if time_active and time_remaining > 0:
 		time_remaining -= delta
-		if time_remaining < 0:
+		if time_remaining <= 0:
 			time_remaining = 0
+			time_active = false
+			time_expired.emit()
 	_update_labels()
 
 

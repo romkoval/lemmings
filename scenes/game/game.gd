@@ -10,6 +10,7 @@ const RESULT_SCENE: PackedScene = preload("res://ui/result_screen.tscn")
 @onready var hud_layer: CanvasLayer = $HUDLayer
 
 var current_level: Level = null
+var current_level_path: String = ""
 var lemming_manager: LemmingManager = null
 var skill_manager: SkillManager = null
 var hud: HUD = null
@@ -30,12 +31,14 @@ func _ready() -> void:
 	hud.nuke_pressed.connect(_on_nuke)
 	hud.skill_chosen.connect(_on_skill_chosen)
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
-	lemming_manager.all_lemmings_resolved.connect(_on_all_resolved)
+	hud.time_expired.connect(_on_time_expired)
+	GameManager.all_lemmings_resolved.connect(_on_all_resolved)
 
 	result_screen = RESULT_SCENE.instantiate()
 	hud_layer.add_child(result_screen)
 	result_screen.retry_pressed.connect(_on_retry)
 	result_screen.menu_pressed.connect(_on_back_to_menu)
+	result_screen.next_pressed.connect(_on_next)
 	GameManager.level_completed.connect(_on_level_completed)
 	GameManager.level_failed.connect(_on_level_failed)
 
@@ -52,6 +55,9 @@ func load_level(scene_path: String) -> void:
 	var scene: PackedScene = load(scene_path)
 	if scene == null:
 		return
+	if result_screen:
+		result_screen.visible = false
+	current_level_path = scene_path
 	current_level = scene.instantiate() as Level
 	level_container.add_child(current_level)
 	lemming_manager.setup(current_level.total_lemmings)
@@ -62,7 +68,7 @@ func load_level(scene_path: String) -> void:
 		current_level.time_limit,
 		skill_manager.skill_counts,
 	)
-	GameManager.start_level(current_level.level_id)
+	GameManager.start_level(current_level.level_id, current_level.total_lemmings)
 
 
 func _input(event: InputEvent) -> void:
@@ -125,8 +131,39 @@ func _on_all_resolved() -> void:
 	GameManager.complete_level(current_level.save_required)
 
 
+func _on_time_expired() -> void:
+	if GameManager.current_state == GameManager.GameState.PLAYING:
+		GameManager.complete_level(current_level.save_required)
+
+
 func _on_level_completed(saved: int, required: int) -> void:
-	result_screen.show_result(true, saved, required, current_level.total_lemmings)
+	result_screen.show_result(true, saved, required, current_level.total_lemmings, _next_level_path() != "")
+
+
+# Resolves the scene path of the level following the current one, or "" if the
+# current level is the last in its category. Derives category + number from the
+# level id (e.g. "fun_03" -> fun / 3 -> next is fun / 4).
+func _next_level_path() -> String:
+	if current_level == null:
+		return ""
+	var id: String = current_level.level_id
+	var sep: int = id.rfind("_")
+	if sep <= 0:
+		return ""
+	var category: String = id.substr(0, sep)
+	var number: int = id.substr(sep + 1).to_int()
+	if number <= 0:
+		return ""
+	var next_path: String = LevelManager.get_scene_path(category, number + 1)
+	return next_path if ResourceLoader.exists(next_path) else ""
+
+
+func _on_next() -> void:
+	var next_path: String = _next_level_path()
+	if next_path == "":
+		_on_back_to_menu()
+		return
+	load_level(next_path)
 
 
 func _on_level_failed(_reason: String) -> void:

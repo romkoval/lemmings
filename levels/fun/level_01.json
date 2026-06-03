@@ -19,11 +19,5 @@
   "terrain_rects": [
     {"x": 0, "y": 30, "w": 45, "h": 4}
   ],
-  "terrain_pits": [
-    {"x": 15, "y": 29, "w": 2, "h": 2}
-  ],
-  "terrain_columns": [
-    {"x": 28, "y": 25, "w": 2, "h": 5}
-  ],
   "steel_rects": []
 }
