@@ -51,6 +51,13 @@ if ! grep -q 'OTHER_LDFLAGS = ("-lswiftCore")' "$PBX"; then
 	changed=1
 fi
 
+# 4. Force universal device family (iPhone + iPad) regardless of what Godot wrote
+#    (it variously emits "1", "2", or even "" depending on preset/editor state).
+if grep -qE 'TARGETED_DEVICE_FAMILY = "[^"]*";' "$PBX" && ! grep -q 'TARGETED_DEVICE_FAMILY = "1,2";' "$PBX"; then
+	perl -0pi -e 's/TARGETED_DEVICE_FAMILY = "[^"]*";/TARGETED_DEVICE_FAMILY = "1,2";/g' "$PBX"
+	changed=1
+fi
+
 if [ "$changed" -eq 1 ]; then
 	echo "Patched $PBX (deployment target 14 + Swift runtime link)."
 	echo "Now open build/ios/lemmings.xcodeproj in Xcode and Build / Archive."
