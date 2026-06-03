@@ -28,11 +28,15 @@ func tick(lemming: Lemming) -> void:
 	if level == null:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	var target: Vector2i = level.world_to_tile(lemming.global_position + Vector2(0, 16))
+	# Probe the tile the feet rest on. The body settles ~1px above the floor, so
+	# feet (origin + 16) can read as the empty cell *above* the floor — sample a
+	# couple px lower (centre-x) to reliably hit the floor tile beneath.
+	var target: Vector2i = level.world_to_tile(lemming.global_position + Vector2(8, 18))
 	if level.is_steel_at(target):
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	if not level.remove_terrain_at(target):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	lemming.global_position += Vector2(0, 8)
+	# Drop a full tile onto the freshly cleared cell so the next probe lines up.
+	lemming.global_position.y = target.y * Level.TILE_SIZE

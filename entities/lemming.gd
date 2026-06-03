@@ -227,7 +227,10 @@ func can_step_up() -> bool:
 	var level: Level = _get_level()
 	if level == null or level.tile_map == null:
 		return false
-	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 16)
+	# +18 (not +16): the body settles ~1px above the floor, so a +16 probe reads
+	# the empty cell above the floor and a 1-tile step (e.g. a builder brick at
+	# foot level) is missed. Probe a couple px into the floor for the true tile.
+	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var feet_tile: Vector2i = level.world_to_tile(feet_world)
 	var wall_tile: Vector2i = feet_tile + Vector2i(0, -1)
 	if not _is_solid(level, wall_tile):
@@ -250,7 +253,7 @@ func _try_step_up() -> bool:
 	if not can_step_up():
 		return false
 	var level: Level = _get_level()
-	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 16)
+	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
 	# Snap feet to the top of the wall tile.
 	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE

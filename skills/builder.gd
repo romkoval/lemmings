@@ -26,7 +26,10 @@ func apply(lemming: Lemming) -> void:
 	if level != null:
 		# Floor tile under the lemming's leading foot, then move up one row:
 		# that's the empty cell at body level where the first brick goes.
-		var feet_world: Vector2 = lemming.global_position + Vector2(8 + _start_dir * 8, 16)
+		# Probe a couple px into the floor (+18, not +16) — the body settles ~1px
+		# high, so feet+16 reads the empty cell above the floor and the staircase
+		# would start a tile too high, leaving a gap followers can't climb.
+		var feet_world: Vector2 = lemming.global_position + Vector2(8 + _start_dir * 8, 18)
 		var floor_tile: Vector2i = level.world_to_tile(feet_world)
 		_start_tile = floor_tile + Vector2i(0, -1)
 	lemming.change_state(Lemming.State.BUILDING)
