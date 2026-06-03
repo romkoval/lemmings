@@ -107,12 +107,38 @@ func _build_terrain_rect(rect: Dictionary) -> void:
 	var w: int = int(rect.get("w", 1))
 	var h: int = int(rect.get("h", 1))
 	var no_grass: bool = bool(rect.get("no_grass", false))
-	for dy: int in h:
-		for dx: int in w:
-			var tx: int = x0 + dx
-			var ty: int = y0 + dy
+	# Optional surface undulation (tiles): the top of the rect rolls upward in
+	# gentle humps so the ground isn't a ruler-straight line. It only ADDS tiles
+	# above y0 — the solid body from y0 down is never touched, so puzzle geometry
+	# and solvability are preserved. Each column differs from its neighbour by at
+	# most one tile, so every rise stays a single climbable step.
+	var amp: int = int(rect.get("undulate", 0))
+	# Keep flat landing pads under the hatch and exit so spawning/exiting stay
+	# aligned; the hills ramp smoothly down to those columns.
+	var pad_cols: Array[int] = []
+	if amp > 0:
+		if entrance:
+			pad_cols.append(world_to_tile(entrance.position).x)
+		if level_exit:
+			pad_cols.append(world_to_tile(level_exit.position).x)
+	var ramp: float = float(amp * 2 + 1)
+	var bump: int = 0
+	for dx: int in w:
+		var tx: int = x0 + dx
+		if amp > 0:
+			# Two low-frequency sines → smooth rolling hills that reach the full
+			# 0..amp range. The combined slope stays gentle enough that adjacent
+			# columns never differ by more than one tile, so every rise is a
+			# single climbable step (no accidental 2-tile walls for walkers).
+			var hf: float = 0.5 + 0.34 * sin(tx * 0.5) + 0.16 * sin(tx * 0.23 + 1.3)
+			var mask: float = 1.0
+			for pc: int in pad_cols:
+				mask = minf(mask, clampf(abs(tx - pc) / ramp, 0.0, 1.0))
+			bump = clampi(int(round(amp * hf * mask)), 0, amp)
+		var top: int = y0 - bump
+		for ty in range(top, y0 + h):
 			var atlas: Vector2i
-			if dy == 0 and not no_grass:
+			if ty == top and not no_grass:
 				atlas = _grass_variant(tx, ty)
 			else:
 				atlas = _dirt_variant(tx, ty)
