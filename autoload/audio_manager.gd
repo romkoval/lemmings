@@ -34,10 +34,15 @@ func play_sfx(sound_name: String) -> void:
 
 
 func play_music(track_name: String) -> void:
-	var path: String = MUSIC_PATH + track_name + ".ogg"
-	if not ResourceLoader.exists(path):
+	var path: String = _resolve(MUSIC_PATH + track_name)
+	if path == "":
 		return
 	var stream: AudioStream = load(path)
+	# Loop background music (placeholder WAVs aren't flagged to loop on import).
+	if stream is AudioStreamWAV:
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin = 0
+		stream.loop_end = stream.data.size() / 2  # 16-bit mono → 2 bytes/sample
 	music_player.stream = stream
 	music_player.volume_db = linear_to_db(SaveManager.settings.get("music_volume", 0.8))
 	music_player.play()
@@ -50,9 +55,18 @@ func stop_music() -> void:
 func _load_sound(sound_name: String) -> AudioStream:
 	if sound_cache.has(sound_name):
 		return sound_cache[sound_name]
-	var path: String = SOUNDS_PATH + sound_name + ".ogg"
-	if not ResourceLoader.exists(path):
+	var path: String = _resolve(SOUNDS_PATH + sound_name)
+	if path == "":
 		return null
 	var stream: AudioStream = load(path)
 	sound_cache[sound_name] = stream
 	return stream
+
+
+# Resolve an asset path without extension, preferring a real .ogg over the
+# generated .wav placeholder. Returns "" if neither exists.
+func _resolve(base: String) -> String:
+	for ext in [".ogg", ".wav"]:
+		if ResourceLoader.exists(base + ext):
+			return base + ext
+	return ""

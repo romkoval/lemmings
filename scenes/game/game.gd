@@ -42,6 +42,8 @@ func _ready() -> void:
 	GameManager.level_completed.connect(_on_level_completed)
 	GameManager.level_failed.connect(_on_level_failed)
 
+	AudioManager.play_music("theme")
+
 	var path: String = initial_level_path
 	if path == "":
 		path = "res://levels/fun/level_01.tscn"
