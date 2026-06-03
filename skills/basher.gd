@@ -29,11 +29,17 @@ func tick(lemming: Lemming) -> void:
 	if level == null:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	var target: Vector2i = level.world_to_tile(lemming.global_position + Vector2(lemming.direction * 12, 8))
+	# Tile just past the body's leading edge at body height (origin + 8 ± to the
+	# front of the box). A shorter reach falls inside the lemming's own cell and
+	# bails out immediately.
+	var target: Vector2i = level.world_to_tile(
+		lemming.global_position + Vector2(8 + lemming.direction * 8, 8))
 	if level.is_steel_at(target):
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	if not level.remove_terrain_at(target):
+		# Nothing solid ahead — tunnel finished, resume walking.
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	lemming.global_position += Vector2(lemming.direction * 4, 0)
+	# Step a full tile into the cleared cell so the next probe lines up.
+	lemming.global_position.x += lemming.direction * Level.TILE_SIZE
