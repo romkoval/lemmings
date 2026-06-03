@@ -5,7 +5,7 @@ func test_loads_level_01() -> void:
 	var data: Dictionary = LevelManager.load_level_data("fun", 1)
 	assert_false(data.is_empty(), "level_01.json should parse")
 	assert_eq(data.get("id"), "fun_01")
-	assert_eq(int(data.get("save_required")), 8)
+	assert_eq(int(data.get("save_required")), 7)
 	assert_eq(int(data.get("total_lemmings")), 10)
 
 

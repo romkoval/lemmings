@@ -8,37 +8,22 @@
   "time_limit": 240,
   "release_rate": 40,
   "skill_counts": {
-    "climber": 0,
-    "floater": 0,
-    "bomber": 0,
-    "blocker": 0,
-    "builder": 0,
-    "basher": 0,
-    "miner": 0,
-    "digger": 5
+    "climber": 0, "floater": 0, "bomber": 0,
+    "blocker": 0, "builder": 0, "basher": 0,
+    "miner": 0, "digger": 5
   },
-  "entrance_pos": [
-    80,
-    76
-  ],
+  "entrance_pos": [80, 76],
   "entrance_direction": 1,
-  "exit_pos": [
-    240,
-    82
-  ],
+  "exit_pos": [560, 462],
+  "add_depth": true,
   "terrain_rects": [
-    {
-      "x": 0,
-      "y": 6,
-      "w": 45,
-      "h": 20
-    },
-    {
-      "x": 0,
-      "y": 30,
-      "w": 45,
-      "h": 4
-    }
+    {"x": 0, "y": 6, "w": 45, "h": 8},
+    {"x": 0, "y": 16, "w": 20, "h": 4},
+    {"x": 25, "y": 22, "w": 20, "h": 4},
+    {"x": 0, "y": 30, "w": 45, "h": 4}
+  ],
+  "terrain_slopes": [
+    {"x": 20, "y": 12, "w": 5, "h": 4, "direction": "down_right"}
   ],
   "steel_rects": []
 }

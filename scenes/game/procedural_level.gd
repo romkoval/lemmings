@@ -3,11 +3,11 @@ extends Level
 
 @export var data_path: String = ""
 
-# Background canvas is created lazily on _ready so any level scene that
-# extends ProceduralLevel automatically gets the sky behind its TileMap,
-# including when loaded standalone by the screenshot tool (which doesn't
-# go through scenes/game/game.tscn).
 const BG_TEX_PATH := "res://assets/sprites/bg_sky.png"
+const DIRT_SOURCE: int = 0
+const GRASS_ATLAS := Vector2i(0, 0)
+const DIRT_ATLAS := Vector2i(1, 0)
+const MAX_TILE_Y: int = 40
 
 
 func _ready() -> void:
@@ -19,15 +19,12 @@ func _ready() -> void:
 
 
 func _ensure_background() -> void:
-	# If the scene already declares a Background node we trust the author.
 	if has_node("Background"):
 		return
 	var layer := CanvasLayer.new()
 	layer.name = "Background"
 	layer.layer = -10
 	add_child(layer)
-	# Solid clear color so any sliver around the tiling texture still reads
-	# as sky, not the engine's pitch-black clear.
 	var floor_rect := ColorRect.new()
 	floor_rect.anchor_right = 1.0
 	floor_rect.anchor_bottom = 1.0
@@ -80,41 +77,149 @@ func _apply_data(d: Dictionary) -> void:
 		if xp is Array and xp.size() == 2:
 			level_exit.position = Vector2(xp[0], xp[1])
 
-	var terrain: Array = d.get("terrain", [])
-	for cell in terrain:
-		if cell is Array and cell.size() == 2:
-			var c := Vector2i(int(cell[0]), int(cell[1]))
-			tile_map.set_cell(TERRAIN_LAYER, c, 0, _dirt_variant(c.x, c.y))
-	var steel: Array = d.get("steel", [])
-	for cell in steel:
+	# --- Terrain building ---
+	for shape: Dictionary in d.get("terrain_rects", []):
+		_build_terrain_rect(shape)
+	for shape: Dictionary in d.get("terrain_slopes", []):
+		_build_terrain_slope(shape)
+	for shape: Dictionary in d.get("terrain_columns", []):
+		_build_terrain_column(shape)
+	for shape: Dictionary in d.get("terrain_steps", []):
+		_build_terrain_steps(shape)
+	for shape: Dictionary in d.get("terrain_pits", []):
+		_build_terrain_pit(shape)
+	if d.get("add_depth", false):
+		_add_depth()
+
+	for cell in d.get("steel", []):
 		if cell is Array and cell.size() == 2:
 			var c2 := Vector2i(int(cell[0]), int(cell[1]))
 			tile_map.set_cell(STEEL_LAYER, c2, 1, _steel_variant(c2.x, c2.y))
-	for rect_dict in d.get("terrain_rects", []):
-		_fill_terrain_rect(rect_dict)
 	for rect_dict in d.get("steel_rects", []):
 		_fill_steel_rect(rect_dict)
 
 
-# Top row gets a grass-topped atlas tile; deeper rows use dirt body variants.
-# Variants are picked deterministically from (x, y) so the same level always
-# looks the same but adjacent tiles differ enough to break the grid feel.
-func _fill_terrain_rect(rect: Dictionary) -> void:
+# ── Terrain shapes ─────────────────────────────────────────────────────
+
+func _build_terrain_rect(rect: Dictionary) -> void:
 	var x0: int = int(rect.get("x", 0))
 	var y0: int = int(rect.get("y", 0))
 	var w: int = int(rect.get("w", 1))
 	var h: int = int(rect.get("h", 1))
-	for dy in h:
-		var tile_y: int = y0 + dy
-		for dx in w:
-			var tile_x: int = x0 + dx
+	var no_grass: bool = bool(rect.get("no_grass", false))
+	for dy: int in h:
+		for dx: int in w:
+			var tx: int = x0 + dx
+			var ty: int = y0 + dy
 			var atlas: Vector2i
-			if dy == 0:
-				atlas = _grass_variant(tile_x, tile_y)
+			if dy == 0 and not no_grass:
+				atlas = _grass_variant(tx, ty)
 			else:
-				atlas = _dirt_variant(tile_x, tile_y)
-			tile_map.set_cell(TERRAIN_LAYER, Vector2i(tile_x, tile_y), 0, atlas)
+				atlas = _dirt_variant(tx, ty)
+			tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, ty), DIRT_SOURCE, atlas)
 
+
+func _build_terrain_slope(shape: Dictionary) -> void:
+	var x0: int = int(shape.get("x", 0))
+	var y0: int = int(shape.get("y", 0))
+	var w: int = int(shape.get("w", 4))
+	var h: int = int(shape.get("h", 4))
+	var dir: String = str(shape.get("direction", "up_right"))
+	for dy: int in h:
+		for dx: int in w:
+			var fill: bool = false
+			var threshold: int
+			match dir:
+				"up_right":
+					threshold = h - 1 - int(float(dx) / float(w) * float(h))
+					fill = dy >= threshold
+				"up_left":
+					threshold = int(float(dx) / float(w) * float(h))
+					fill = dy >= threshold
+				"down_right":
+					threshold = int(float(dx) / float(w) * float(h))
+					fill = dy <= threshold
+				"down_left":
+					threshold = h - 1 - int(float(dx) / float(w) * float(h))
+					fill = dy <= threshold
+			if fill:
+				var is_surface: bool = (dy == threshold)
+				var atlas: Vector2i = DIRT_ATLAS
+				if is_surface:
+					atlas = GRASS_ATLAS
+				tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
+
+
+func _build_terrain_column(shape: Dictionary) -> void:
+	var x0: int = int(shape.get("x", 0))
+	var y0: int = int(shape.get("y", 0))
+	var w: int = int(shape.get("w", 2))
+	var h: int = int(shape.get("h", 3))
+	var has_grass: bool = not bool(shape.get("no_grass", false))
+	for dy: int in h:
+		for dx: int in w:
+			var atlas: Vector2i = DIRT_ATLAS
+			if dy == 0 and has_grass:
+				atlas = GRASS_ATLAS
+			tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy), DIRT_SOURCE, atlas)
+	if has_grass:
+		var shadow_y: int = y0 + h
+		for dx: int in w:
+			for sd: int in range(1, 3):
+				var sy: int = shadow_y + sd
+				if sy < MAX_TILE_Y:
+					var existing: int = tile_map.get_cell_source_id(TERRAIN_LAYER, Vector2i(x0 + dx, sy))
+					if existing == -1:
+						tile_map.set_cell(TERRAIN_LAYER, Vector2i(x0 + dx, sy), DIRT_SOURCE, DIRT_ATLAS)
+
+
+func _build_terrain_steps(shape: Dictionary) -> void:
+	var x0: int = int(shape.get("x", 0))
+	var y0: int = int(shape.get("y", 0))
+	var step_w: int = int(shape.get("step_w", 2))
+	var step_h: int = int(shape.get("step_h", 1))
+	var num_steps: int = int(shape.get("num_steps", 4))
+	var direction: String = str(shape.get("direction", "right"))
+	for i: int in num_steps:
+		var sx: int = x0 + i * step_w if direction == "right" else x0 - i * step_w
+		var sy: int = y0 - i * step_h
+		var fill_h: int = (num_steps - i) * step_h + 2
+		for dy: int in fill_h:
+			for dx: int in step_w:
+				var atlas: Vector2i = DIRT_ATLAS
+				if dy == 0:
+					atlas = GRASS_ATLAS
+				tile_map.set_cell(TERRAIN_LAYER, Vector2i(sx + dx, sy + dy), DIRT_SOURCE, atlas)
+
+
+func _build_terrain_pit(shape: Dictionary) -> void:
+	var x0: int = int(shape.get("x", 0))
+	var y0: int = int(shape.get("y", 0))
+	var w: int = int(shape.get("w", 2))
+	var h: int = int(shape.get("h", 2))
+	for dy: int in h:
+		for dx: int in w:
+			tile_map.erase_cell(TERRAIN_LAYER, Vector2i(x0 + dx, y0 + dy))
+
+
+func _add_depth() -> void:
+	var all_cells: Array[Vector2i]
+	all_cells.assign(tile_map.get_used_cells(TERRAIN_LAYER))
+	var cell_set: Dictionary = {}
+	for c: Vector2i in all_cells:
+		cell_set[c] = true
+
+	for cell: Vector2i in all_cells:
+		var below: Vector2i = Vector2i(cell.x, cell.y + 1)
+		if not cell_set.has(below):
+			for d: int in range(1, 4):
+				var depth_cell: Vector2i = Vector2i(cell.x, cell.y + d)
+				if not cell_set.has(depth_cell) and depth_cell.y < MAX_TILE_Y:
+					tile_map.set_cell(TERRAIN_LAYER, depth_cell, DIRT_SOURCE, DIRT_ATLAS)
+					cell_set[depth_cell] = true
+
+
+# ── Steel ──────────────────────────────────────────────────────────────
 
 func _fill_steel_rect(rect: Dictionary) -> void:
 	var x0: int = int(rect.get("x", 0))
@@ -128,16 +233,15 @@ func _fill_steel_rect(rect: Dictionary) -> void:
 			tile_map.set_cell(STEEL_LAYER, Vector2i(tx, ty), 1, _steel_variant(tx, ty))
 
 
-# Grass top: cols 0 and 2 in the atlas. Variant B (flowers) is rarer (~25%).
+# ── Variant pickers ────────────────────────────────────────────────────
+
 func _grass_variant(x: int, y: int) -> Vector2i:
-	var h := wrapi(x * 73 + y * 31, 0, 100)
+	var h: int = wrapi(x * 73 + y * 31, 0, 100)
 	return Vector2i(2, 0) if h < 25 else Vector2i(0, 0)
 
 
-# Dirt body: cols 1 (A — pebbles), 3 (B — roots), 4 (C — stone). C is the
-# rarest because it has a chunky stone that looks weird if it tiles densely.
 func _dirt_variant(x: int, y: int) -> Vector2i:
-	var h := wrapi(x * 53 + y * 97, 0, 100)
+	var h: int = wrapi(x * 53 + y * 97, 0, 100)
 	if h < 10:
 		return Vector2i(4, 0)
 	if h < 40:
@@ -145,10 +249,8 @@ func _dirt_variant(x: int, y: int) -> Vector2i:
 	return Vector2i(1, 0)
 
 
-# Steel: cols 0 (plate), 1 (rivet), 2 (warning). Warning stripes are rare so
-# they read as accent tiles, not the whole wall.
 func _steel_variant(x: int, y: int) -> Vector2i:
-	var h := wrapi(x * 41 + y * 67, 0, 100)
+	var h: int = wrapi(x * 41 + y * 67, 0, 100)
 	if h < 12:
 		return Vector2i(2, 0)
 	if h < 50:

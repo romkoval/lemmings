@@ -1,63 +1,33 @@
 {
   "id": "fun_05",
-  "name": "Use Everything",
+  "name": "Cross The Chasm",
   "difficulty": "fun",
   "number": 5,
-  "save_required": 7,
-  "total_lemmings": 12,
-  "time_limit": 360,
-  "release_rate": 30,
+  "save_required": 5,
+  "total_lemmings": 10,
+  "time_limit": 300,
+  "release_rate": 40,
   "skill_counts": {
-    "climber": 2,
-    "floater": 2,
-    "bomber": 2,
-    "blocker": 2,
-    "builder": 2,
-    "basher": 2,
-    "miner": 2,
-    "digger": 2
+    "climber": 0, "floater": 0, "bomber": 0,
+    "blocker": 0, "builder": 6, "basher": 2,
+    "miner": 0, "digger": 0
   },
-  "entrance_pos": [
-    80,
-    108
-  ],
+  "entrance_pos": [80, 430],
   "entrance_direction": 1,
-  "exit_pos": [
-    560,
-    462
-  ],
+  "exit_pos": [640, 432],
+  "add_depth": true,
   "terrain_rects": [
-    {
-      "x": 0,
-      "y": 8,
-      "w": 14,
-      "h": 22
-    },
-    {
-      "x": 18,
-      "y": 14,
-      "w": 12,
-      "h": 16
-    },
-    {
-      "x": 34,
-      "y": 8,
-      "w": 11,
-      "h": 22
-    },
-    {
-      "x": 0,
-      "y": 30,
-      "w": 45,
-      "h": 4
-    }
+    {"x": 0, "y": 28, "w": 20, "h": 6},
+    {"x": 30, "y": 28, "w": 15, "h": 6},
+    {"x": 20, "y": 14, "w": 10, "h": 3}
   ],
-  "steel_rects": [
-    {
-      "x": 18,
-      "y": 14,
-      "w": 12,
-      "h": 1
-    }
-  ]
+  "terrain_columns": [
+    {"x": 10, "y": 22, "w": 2, "h": 6},
+    {"x": 35, "y": 20, "w": 2, "h": 8}
+  ],
+  "terrain_slopes": [
+    {"x": 12, "y": 22, "w": 4, "h": 3, "direction": "up_right"},
+    {"x": 18, "y": 24, "w": 2, "h": 3, "direction": "down_right"}
+  ],
+  "steel_rects": []
 }
