@@ -6,7 +6,11 @@ signal lemming_spawned(lemming: Lemming)
 const LEMMING_SCENE: PackedScene = preload("res://entities/lemming.tscn")
 
 @export var initial_direction: int = 1
-@export var spawn_offset: Vector2 = Vector2(0, 16)
+# The lemming's collision box already reaches ~16px below its origin (feet), so
+# spawning at the entrance origin puts its feet just above a floor authored a
+# tile below the door. An extra downward offset would embed it in the terrain
+# and pin it (move_and_slide can't resolve deep penetration) — keep this zero.
+@export var spawn_offset: Vector2 = Vector2(0, 2)
 
 var spawned_count: int = 0
 var max_spawn: int = 0
