@@ -25,6 +25,9 @@ const WALK_SPEED: float = 60.0
 const GRAVITY: float = 120.0
 const MAX_FALL_PIXELS: int = 64
 const CLIMB_SPEED: float = 30.0
+# Downward bias applied while walking on the ground (see _process_walking). Much
+# smaller than GRAVITY so 45° ramps remain climbable.
+const GROUND_STICK: float = 20.0
 const BOMB_FUSE_SECONDS: float = 5.0
 # Anything that falls past the bottom of the playfield is lost (ТЗ §1.3).
 # Without this a lemming that walks off the map falls forever and the level
@@ -109,30 +112,45 @@ func _process_walking(delta: float) -> void:
 	if _is_blocker_at_front():
 		turn_around()
 		return
-	velocity.y = GRAVITY
+	# Only a small downward "stick" force while grounded — NOT full gravity. On a
+	# 45° slope full gravity's down-slope component (≈0.7·GRAVITY) would overpower
+	# the walk speed and the lemming could never climb; a light bias lets floor
+	# snapping hug slopes while horizontal speed still carries it uphill.
+	velocity.y = GROUND_STICK
 	velocity.x = WALK_SPEED * direction
 	move_and_slide()
 	if not is_on_floor():
 		change_state(State.FALLING)
 		return
+	# Walkable slopes are carried by move_and_slide as floor, so the lemming glides
+	# up/down ramps. Only a *near-vertical* obstacle in the travel direction counts
+	# as a wall — there we step up a single tile, climb, or turn. A 45° ramp normal
+	# (n.y≈-0.7) is well clear of this test, so ramps never trigger a turn.
+	if _hit_vertical_wall():
+		if _is_blocker_at_front():
+			turn_around()
+			return
+		# Try to step up over a 1-tile-high obstacle (e.g. builder stairs).
+		if _try_step_up():
+			return
+		if is_climber:
+			change_state(State.CLIMBING)
+			return
+		turn_around()
+		return
+
+
+# True only when a slide collision this frame is a near-vertical wall facing the
+# lemming (steeper than any walkable slope), so ramps/floors don't count.
+func _hit_vertical_wall() -> bool:
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		if col == null:
 			continue
 		var n: Vector2 = col.get_normal()
-		if abs(n.x) > 0.5:
-			var blocker_hit: bool = _is_blocker_at_front()
-			if blocker_hit:
-				turn_around()
-				return
-			# Try to step up over a 1-tile-high obstacle (e.g. builder stairs).
-			if _try_step_up():
-				return
-			if is_climber:
-				change_state(State.CLIMBING)
-				return
-			turn_around()
-			return
+		if absf(n.y) < 0.35 and absf(n.x) > 0.85 and signf(n.x) == -direction:
+			return true
+	return false
 
 
 func _process_falling(delta: float) -> void:

@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://b1lvlfun060000"]
+
+[ext_resource type="Script" path="res://scenes/game/procedural_level.gd" id="1_script"]
+[ext_resource type="TileSet" path="res://assets/tilesets/main_tileset.tres" id="2_tileset"]
+[ext_resource type="PackedScene" path="res://entities/entrance.tscn" id="3_entrance"]
+[ext_resource type="PackedScene" path="res://entities/exit.tscn" id="4_exit"]
+
+[node name="Level" type="Node2D"]
+script = ExtResource("1_script")
+data_path = "res://levels/fun/level_06.json"
+
+[node name="TileMap" type="TileMap" parent="."]
+tile_set = ExtResource("2_tileset")
+format = 2
+layer_0/name = "terrain"
+layer_0/enabled = true
+layer_0/tile_data = PackedInt32Array()
+layer_1/name = "steel"
+layer_1/enabled = true
+layer_1/tile_data = PackedInt32Array()
+
+[node name="Entrance" parent="." instance=ExtResource("3_entrance")]
+position = Vector2(80, 460)
+
+[node name="LevelExit" parent="." instance=ExtResource("4_exit")]
+position = Vector2(640, 462)

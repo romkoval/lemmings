@@ -659,19 +659,45 @@ def _draw_steel(im, x0, *, variant="plate"):
             p[x0 + 13, y] = STEEL_D
 
 
+def _draw_ramp(im, x0, y0, dirn):
+    """45° slope tile drawn into the 16×16 cell at (x0,y0). dirn 'R' rises to the
+    right (solid lower-right triangle), 'L' rises to the left. The art's solid
+    region matches the triangular collision polygon in main_tileset.tres exactly,
+    so lemmings walk the diagonal surface smoothly instead of stepping squares."""
+    p = im.load()
+    seed = 7
+    for x in range(16):
+        sy = (15 - x) if dirn == "R" else x          # surface row in this column
+        for y in range(sy, 16):
+            n = (x * 7 + y * 13 + seed) & 0xff
+            base = DIRT_D if n < 50 else (DIRT if n < 150 else DIRT_L)
+            p[x0 + x, y0 + y] = base
+        # grass cap riding the diagonal
+        p[x0 + x, y0 + sy] = GRASS_L
+        if sy + 1 < 16: p[x0 + x, y0 + sy + 1] = GRASS
+        if sy + 2 < 16: p[x0 + x, y0 + sy + 2] = GRASS_D
+        # a couple of embedded pebbles for texture
+        if (x * 5 + seed) % 7 == 0 and sy + 4 < 16:
+            p[x0 + x, y0 + sy + 4] = STONE
+
+
 def make_tileset():
-    """128×16 atlas — 8 tile columns. See module docstring for layout."""
-    im = img(128, 16)
-    # Terrain variants (cols 0..4)
+    """128×32 atlas. Row 0 cols 0..7: grass-A, dirt-A, grass-B, dirt-B, dirt-C,
+    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left."""
+    im = img(128, 32)
+    # Terrain variants (row 0, cols 0..4)
     _draw_grass_top(im, 0, variant="A")
     _draw_dirt_body(im, 16, seed=1, variant="A")
     _draw_grass_top(im, 32, variant="B")
     _draw_dirt_body(im, 48, seed=2, variant="B")
     _draw_dirt_body(im, 64, seed=3, variant="C")
-    # Steel variants (cols 5..7)
+    # Steel variants (row 0, cols 5..7)
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
+    # Ramps (row 1, cols 0..1)
+    _draw_ramp(im, 0, 16, "R")
+    _draw_ramp(im, 16, 16, "L")
     return im
 
 

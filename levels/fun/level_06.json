@@ -1,0 +1,23 @@
+{
+  "id": "fun_06",
+  "name": "Песочница — все навыки",
+  "difficulty": "fun",
+  "number": 6,
+  "save_required": 1,
+  "total_lemmings": 40,
+  "time_limit": 600,
+  "release_rate": 40,
+  "skill_counts": {
+    "climber": 20, "floater": 20, "bomber": 20,
+    "blocker": 20, "builder": 20, "basher": 20,
+    "miner": 20, "digger": 20
+  },
+  "entrance_pos": [80, 460],
+  "entrance_direction": 1,
+  "exit_pos": [640, 462],
+  "add_depth": true,
+  "terrain_rects": [
+    {"x": 0, "y": 30, "w": 45, "h": 6, "undulate": 3}
+  ],
+  "steel_rects": []
+}

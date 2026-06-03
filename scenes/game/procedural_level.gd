@@ -7,6 +7,8 @@ const BG_TEX_PATH := "res://assets/sprites/bg_sky.png"
 const DIRT_SOURCE: int = 0
 const GRASS_ATLAS := Vector2i(0, 0)
 const DIRT_ATLAS := Vector2i(1, 0)
+const RAMP_R_ATLAS := Vector2i(0, 1)   # 45° slope rising to the right
+const RAMP_L_ATLAS := Vector2i(1, 1)   # 45° slope rising to the left
 const MAX_TILE_Y: int = 40
 
 
@@ -107,42 +109,53 @@ func _build_terrain_rect(rect: Dictionary) -> void:
 	var w: int = int(rect.get("w", 1))
 	var h: int = int(rect.get("h", 1))
 	var no_grass: bool = bool(rect.get("no_grass", false))
-	# Optional surface undulation (tiles): the top of the rect rolls upward in
-	# gentle humps so the ground isn't a ruler-straight line. It only ADDS tiles
-	# above y0 — the solid body from y0 down is never touched, so puzzle geometry
-	# and solvability are preserved. Each column differs from its neighbour by at
-	# most one tile, so every rise stays a single climbable step.
+	# Optional surface undulation (tiles): the top of the rect rolls in smooth
+	# hills built from 45° ramp tiles, so lemmings walk genuine slopes instead of
+	# square steps. It only ADDS tiles above y0 — the solid body from y0 down is
+	# never touched, so puzzle geometry and solvability are preserved.
 	var amp: int = int(rect.get("undulate", 0))
-	# Keep flat landing pads under the hatch and exit so spawning/exiting stay
-	# aligned; the hills ramp smoothly down to those columns.
+	# Surface heights sampled at every column boundary (w+1 posts). Two low-freq
+	# sines give rolling hills across the full 0..amp range; flat pads under the
+	# hatch and exit keep spawning/exiting aligned, with the hills ramping down to
+	# them. Adjacent posts differ by at most one tile, so each column is either a
+	# flat top or a single ramp.
 	var pad_cols: Array[int] = []
 	if amp > 0:
 		if entrance:
 			pad_cols.append(world_to_tile(entrance.position).x)
 		if level_exit:
 			pad_cols.append(world_to_tile(level_exit.position).x)
-	var ramp: float = float(amp * 2 + 1)
-	var bump: int = 0
-	for dx: int in w:
-		var tx: int = x0 + dx
+	var ramp_dist: float = float(amp * 2 + 1)
+	var heights: Array[int] = []
+	for i: int in range(w + 1):
+		var tx: int = x0 + i
+		var hh: int = 0
 		if amp > 0:
-			# Two low-frequency sines → smooth rolling hills that reach the full
-			# 0..amp range. The combined slope stays gentle enough that adjacent
-			# columns never differ by more than one tile, so every rise is a
-			# single climbable step (no accidental 2-tile walls for walkers).
 			var hf: float = 0.5 + 0.34 * sin(tx * 0.5) + 0.16 * sin(tx * 0.23 + 1.3)
 			var mask: float = 1.0
 			for pc: int in pad_cols:
-				mask = minf(mask, clampf(abs(tx - pc) / ramp, 0.0, 1.0))
-			bump = clampi(int(round(amp * hf * mask)), 0, amp)
-		var top: int = y0 - bump
-		for ty in range(top, y0 + h):
-			var atlas: Vector2i
-			if ty == top and not no_grass:
-				atlas = _grass_variant(tx, ty)
-			else:
-				atlas = _dirt_variant(tx, ty)
-			tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, ty), DIRT_SOURCE, atlas)
+				mask = minf(mask, clampf(abs(tx - pc) / ramp_dist, 0.0, 1.0))
+			hh = clampi(int(round(amp * hf * mask)), 0, amp)
+		heights.append(hh)
+
+	for dx: int in w:
+		var tx: int = x0 + dx
+		var lh: int = heights[dx]       # surface height at this column's left edge
+		var rh: int = heights[dx + 1]   # ...and its right edge
+		var top_row: int
+		var top_atlas: Vector2i
+		if rh > lh:                     # rising to the right → ramp up
+			top_row = y0 - rh
+			top_atlas = RAMP_R_ATLAS
+		elif rh < lh:                   # falling to the right → ramp down
+			top_row = y0 - lh
+			top_atlas = RAMP_L_ATLAS
+		else:                           # level → flat grass (or bare dirt)
+			top_row = y0 - lh
+			top_atlas = _dirt_variant(tx, top_row) if no_grass else _grass_variant(tx, top_row)
+		tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, top_row), DIRT_SOURCE, top_atlas)
+		for ty in range(top_row + 1, y0 + h):
+			tile_map.set_cell(TERRAIN_LAYER, Vector2i(tx, ty), DIRT_SOURCE, _dirt_variant(tx, ty))
 
 
 func _build_terrain_slope(shape: Dictionary) -> void:
