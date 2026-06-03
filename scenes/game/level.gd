@@ -58,7 +58,9 @@ func add_terrain_at(tile_coord: Vector2i, source_id: int = 0, atlas: Vector2i = 
 
 
 func world_to_tile(world_pos: Vector2) -> Vector2i:
-	return Vector2i(int(world_pos.x) / TILE_SIZE, int(world_pos.y) / TILE_SIZE)
+	# floori (not int truncation) so negative world coordinates map correctly:
+	# a lemming at x=-1 belongs to tile -1, not tile 0.
+	return Vector2i(floori(world_pos.x / TILE_SIZE), floori(world_pos.y / TILE_SIZE))
 
 
 func tile_to_world(tile_coord: Vector2i) -> Vector2:

@@ -1,19 +1,9 @@
 class_name LemmingManager
 extends Node
 
-signal all_lemmings_resolved()
-
-var total_to_spawn: int = 0
-var spawned: int = 0
-var saved: int = 0
-var died: int = 0
-
-
-func setup(total: int) -> void:
-	total_to_spawn = total
-	spawned = 0
-	saved = 0
-	died = 0
+# Tracks the live lemmings on the field and drives the Nuke action.
+# Win/lose resolution lives in GameManager (driven by per-lemming saved/died
+# notifications) — this manager intentionally does NOT duplicate that count.
 
 
 func get_active_lemmings() -> Array:
@@ -22,25 +12,6 @@ func get_active_lemmings() -> Array:
 
 func get_active_count() -> int:
 	return get_active_lemmings().size()
-
-
-func notify_spawned() -> void:
-	spawned += 1
-
-
-func notify_saved() -> void:
-	saved += 1
-	_check_done()
-
-
-func notify_died() -> void:
-	died += 1
-	_check_done()
-
-
-func _check_done() -> void:
-	if spawned >= total_to_spawn and get_active_count() == 0:
-		all_lemmings_resolved.emit()
 
 
 func nuke_all() -> void:

@@ -60,7 +60,6 @@ func load_level(scene_path: String) -> void:
 	current_level_path = scene_path
 	current_level = scene.instantiate() as Level
 	level_container.add_child(current_level)
-	lemming_manager.setup(current_level.total_lemmings)
 	skill_manager.configure(current_level.skill_counts)
 	hud.configure(
 		current_level.total_lemmings,
