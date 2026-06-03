@@ -43,6 +43,7 @@ var is_climber: bool = false
 var bomb_timer: float = 0.0
 var active_skill_node: RefCounted = null
 var lemming_id: int = -1
+var highlighted: bool = false
 
 @onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
@@ -269,6 +270,13 @@ func turn_around() -> void:
 	_update_visual()
 
 
+func set_highlighted(value: bool) -> void:
+	if highlighted == value:
+		return
+	highlighted = value
+	_update_visual()
+
+
 func assign_skill(skill) -> bool:
 	if skill == null:
 		return false
@@ -303,9 +311,10 @@ func _update_visual() -> void:
 		return
 	# Sprite art faces right by default; flip when walking left.
 	sprite.flip_h = direction < 0
-	# Reset bomb-flash tint when leaving EXPLODING.
+	# Reset bomb-flash tint when leaving EXPLODING; the bomb flash owns the tint.
 	if current_state != State.EXPLODING:
-		sprite.modulate = Color(1, 1, 1, 1)
+		# Highlight the lemming the player is about to assign a skill to.
+		sprite.modulate = Color(1.7, 1.7, 0.7) if highlighted else Color(1, 1, 1, 1)
 	var anim: StringName = &"walk"
 	match current_state:
 		State.WALKING:    anim = &"walk"

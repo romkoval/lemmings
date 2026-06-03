@@ -15,6 +15,7 @@ var lemming_manager: LemmingManager = null
 var skill_manager: SkillManager = null
 var hud: HUD = null
 var result_screen: ResultScreen = null
+var _highlighted: Lemming = null
 
 
 func _ready() -> void:
@@ -74,15 +75,24 @@ func load_level(scene_path: String) -> void:
 
 func _input(event: InputEvent) -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
+		_set_highlight(null)
 		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-			_try_assign_at(get_global_mouse_position())
+	# emulate_touch_from_mouse is on, so a desktop click arrives as a touch too —
+	# handle assignment only via touch to avoid assigning twice.
+	if event is InputEventMouseMotion:
+		_update_highlight(get_global_mouse_position())
 	elif event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
 		if st.pressed:
-			_try_assign_at(st.position)
+			# event.position is in screen space — map it into the world.
+			_try_assign_at(_screen_to_world(st.position))
+	elif event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		_update_highlight(_screen_to_world(sd.position))
+
+
+func _screen_to_world(screen_pos: Vector2) -> Vector2:
+	return get_canvas_transform().affine_inverse() * screen_pos
 
 
 func _try_assign_at(world_pos: Vector2) -> void:
@@ -92,6 +102,25 @@ func _try_assign_at(world_pos: Vector2) -> void:
 	if nearest == null:
 		return
 	skill_manager.assign_to(nearest)
+
+
+# Highlight the lemming that a tap near `world_pos` would target, so the player
+# can see who is about to get the selected skill (touch is imprecise).
+func _update_highlight(world_pos: Vector2) -> void:
+	if skill_manager.selected_skill == "":
+		_set_highlight(null)
+		return
+	_set_highlight(_find_lemming_near(world_pos, 28.0))
+
+
+func _set_highlight(lem: Lemming) -> void:
+	if lem == _highlighted:
+		return
+	if _highlighted != null and is_instance_valid(_highlighted):
+		_highlighted.set_highlighted(false)
+	_highlighted = lem
+	if _highlighted != null:
+		_highlighted.set_highlighted(true)
 
 
 func _find_lemming_near(pos: Vector2, max_dist: float) -> Lemming:

@@ -6,10 +6,13 @@ signal nuke_pressed()
 signal skill_chosen(skill_name: String)
 signal time_expired()
 
+const FAST_SPEED: float = 3.0
+
 @onready var skill_panel: SkillPanel = $BottomBar/SkillPanel
 @onready var saved_label: Label = $TopBar/SavedLabel
 @onready var spawned_label: Label = $TopBar/SpawnedLabel
 @onready var timer_label: Label = $TopBar/TimerLabel
+@onready var fast_button: Button = $TopBar/FastButton
 @onready var pause_button: Button = $TopBar/PauseButton
 @onready var nuke_button: Button = $TopBar/NukeButton
 
@@ -21,6 +24,9 @@ var required_saved: int = 0
 func _ready() -> void:
 	pause_button.pressed.connect(func(): pause_pressed.emit())
 	nuke_button.pressed.connect(func(): nuke_pressed.emit())
+	fast_button.toggled.connect(_on_fast_toggled)
+	# time_scale is global state — make sure it doesn't leak back to the menus.
+	tree_exiting.connect(func(): Engine.time_scale = 1.0)
 	skill_panel.skill_selected.connect(func(name: String): skill_chosen.emit(name))
 	for label in [saved_label, spawned_label, timer_label]:
 		if label:
@@ -52,6 +58,11 @@ func configure(total_lemmings: int, required: int, time_limit_sec: int, skill_co
 	time_active = true
 	skill_panel.update_counts(skill_counts)
 	_update_labels()
+
+
+func _on_fast_toggled(on: bool) -> void:
+	Engine.time_scale = FAST_SPEED if on else 1.0
+	fast_button.text = "»»" if on else "»"
 
 
 func update_skill_counts(skill_counts: Dictionary) -> void:
