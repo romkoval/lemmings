@@ -44,6 +44,10 @@ var bomb_timer: float = 0.0
 var active_skill_node: RefCounted = null
 var lemming_id: int = -1
 var highlighted: bool = false
+# Gradual step-up onto a stair/terrain step (see _try_step_up): while true the
+# body slides toward _step_target at walking speed instead of teleporting.
+var _stepping_up: bool = false
+var _step_target: Vector2 = Vector2.ZERO
 
 @onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
@@ -85,6 +89,7 @@ func change_state(new_state: State) -> void:
 		return
 	var old: State = current_state
 	current_state = new_state
+	_stepping_up = false
 	state_changed.emit(old, new_state)
 	_update_visual()
 	if new_state == State.FALLING:
@@ -93,6 +98,11 @@ func change_state(new_state: State) -> void:
 
 
 func _process_walking(delta: float) -> void:
+	# Mid-climb onto a step: slide toward the step top at walking speed and do
+	# nothing else until we arrive (see _try_step_up / _advance_step_up).
+	if _stepping_up:
+		_advance_step_up(delta)
+		return
 	# A blocker stops walkers by proximity, not by physical collision: lemmings
 	# share no collision mask with each other (mask = terrain only), so two bodies
 	# pass straight through. Detect the blocker ahead and turn before moving.
@@ -263,18 +273,29 @@ func _try_step_up() -> bool:
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
 	var tile_left: float = float(wall_tile.x * Level.TILE_SIZE)
-	# Lift the feet onto the step top.
-	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
-	# Advance the body centre a few px onto the step from the side it entered, so
-	# it's supported by the step tile instead of hovering beside it (which would
-	# make it fall back). Done symmetrically: snapping to an absolute tile X made a
-	# rightward step jump a full tile while a leftward one barely moved — that
-	# asymmetric lurch is what made the staircase feel scary going right.
-	if direction > 0:
-		global_position.x = tile_left - 4.0
-	else:
-		global_position.x = tile_left + 4.0
+	var target_y: float = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
+	# Land the body centre a few px onto the step from the side it entered, so it's
+	# supported by the step tile instead of hovering beside it. Symmetric in both
+	# directions (an absolute-tile-X snap jumped a full tile going right but barely
+	# moved going left).
+	var target_x: float = tile_left - 4.0 if direction > 0 else tile_left + 4.0
+	# Climb onto the step gradually rather than teleporting: an instant jump moved
+	# the body ~18px in one frame, so the crowd ascended a staircase about twice as
+	# fast as they walk on flat ground. Sliding toward the step top at WALK_SPEED
+	# keeps stair travel no faster than flat walking (_advance_step_up).
+	_step_target = Vector2(target_x, target_y)
+	_stepping_up = true
 	return true
+
+
+func _advance_step_up(delta: float) -> void:
+	var to_target: Vector2 = _step_target - global_position
+	var step_len: float = WALK_SPEED * delta
+	if to_target.length() <= step_len:
+		global_position = _step_target
+		_stepping_up = false
+	else:
+		global_position += to_target.normalized() * step_len
 
 
 func turn_around() -> void:
