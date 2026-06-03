@@ -144,8 +144,11 @@ func _process_climbing(delta: float) -> void:
 	velocity.x = 0
 	move_and_slide()
 	if not _has_wall_at_side():
+		# Reached the top — mantle over the edge onto the surface and resume
+		# walking in the same direction. Lift clear of the lip and step forward
+		# so the body lands on top instead of sliding back down the face.
 		change_state(State.WALKING)
-		global_position.x += direction * 4
+		global_position += Vector2(direction * 14, -10)
 
 
 func _process_blocking(_delta: float) -> void:
@@ -188,14 +191,25 @@ func _is_blocker_at_front() -> bool:
 
 
 func _has_wall_at_side() -> bool:
+	# Cast from the body's leading edge (the collision box sits at x∈[3..13]
+	# around the origin, so the wall a walker stops against is ~13px ahead of
+	# the origin). A short ray from the origin would fall short of the wall and
+	# make a climber drop off immediately — sample from the box centre with
+	# enough reach to touch the wall the body is flush against.
 	var space := get_world_2d().direct_space_state
-	var from: Vector2 = global_position
-	var to: Vector2 = global_position + Vector2(direction * 10, 0)
-	var query := PhysicsRayQueryParameters2D.create(from, to)
+	var origin: Vector2 = global_position + Vector2(8, 8)
+	var result := _ray_hits(space, origin, Vector2(direction * 12, 0))
+	if result:
+		return true
+	# Also check at head height so an overhang/ledge still counts as wall.
+	return _ray_hits(space, global_position + Vector2(8, 2), Vector2(direction * 12, 0))
+
+
+func _ray_hits(space: PhysicsDirectSpaceState2D, from: Vector2, offset: Vector2) -> bool:
+	var query := PhysicsRayQueryParameters2D.create(from, from + offset)
 	query.collide_with_bodies = true
 	query.exclude = [self]
-	var result := space.intersect_ray(query)
-	return not result.is_empty()
+	return not space.intersect_ray(query).is_empty()
 
 
 func _get_level() -> Level:
