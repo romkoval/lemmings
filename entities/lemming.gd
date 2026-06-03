@@ -255,8 +255,12 @@ func _try_step_up() -> bool:
 	var level: Level = _get_level()
 	var feet_world: Vector2 = global_position + Vector2(8 + direction * 8, 18)
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
-	# Snap feet to the top of the wall tile.
+	# Snap feet onto the step top AND advance onto it. The collision touches the
+	# step at its near edge, so the body is still mostly beside it — lifting Y
+	# alone would leave the lemming hovering over empty space and it would just
+	# fall back. Move forward so the body lands on the step tile.
 	global_position.y = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
+	global_position.x = wall_tile.x * Level.TILE_SIZE + 4
 	return true
 
 

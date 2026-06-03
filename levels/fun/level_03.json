@@ -1,33 +1,27 @@
 {
   "id": "fun_03",
-  "name": "Stairway",
+  "name": "Build A Stairway",
   "difficulty": "fun",
   "number": 3,
   "save_required": 5,
   "total_lemmings": 10,
   "time_limit": 240,
-  "release_rate": 40,
+  "release_rate": 50,
   "skill_counts": {
     "climber": 0, "floater": 0, "bomber": 0,
-    "blocker": 0, "builder": 3, "basher": 0,
+    "blocker": 0, "builder": 4, "basher": 0,
     "miner": 0, "digger": 0
   },
-  "entrance_pos": [80, 430],
+  "entrance_pos": [80, 398],
   "entrance_direction": 1,
-  "exit_pos": [640, 272],
-  "add_depth": true,
+  "exit_pos": [404, 288],
+  "add_depth": false,
   "terrain_rects": [
-    {"x": 0, "y": 28, "w": 10, "h": 6},
-    {"x": 25, "y": 18, "w": 20, "h": 3}
-  ],
-  "terrain_steps": [
-    {"x": 10, "y": 27, "step_w": 2, "step_h": 1, "num_steps": 5, "direction": "right"}
+    {"x": 0, "y": 26, "w": 45, "h": 8}
   ],
   "terrain_columns": [
-    {"x": 20, "y": 22, "w": 2, "h": 6}
-  ],
-  "terrain_slopes": [
-    {"x": 22, "y": 18, "w": 3, "h": 4, "direction": "down_right"}
+    {"x": 0, "y": 20, "w": 2, "h": 6},
+    {"x": 43, "y": 20, "w": 2, "h": 6}
   ],
   "steel_rects": []
 }
