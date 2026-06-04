@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://b1hud000000000"]
+[gd_scene load_steps=4 format=3 uid="uid://b1hud000000000"]
 
 [ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://ui/skill_panel.gd" id="2_panel"]
+[ext_resource type="Script" path="res://ui/minimap.gd" id="3_minimap"]
 
 [node name="HUD" type="Control"]
 process_mode = 3
@@ -59,3 +60,35 @@ offset_top = -112.0
 
 [node name="SkillPanel" type="HBoxContainer" parent="BottomBar"]
 script = ExtResource("2_panel")
+
+[node name="ZoomControls" type="VBoxContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -60.0
+offset_top = -250.0
+offset_right = -18.0
+offset_bottom = -122.0
+theme_override_constants/separation = 12
+
+[node name="ZoomIn" type="Button" parent="ZoomControls"]
+custom_minimum_size = Vector2(56, 56)
+size_flags_vertical = 3
+text = "+"
+
+[node name="ZoomOut" type="Button" parent="ZoomControls"]
+custom_minimum_size = Vector2(56, 56)
+size_flags_vertical = 3
+text = "−"
+
+[node name="Minimap" type="Panel" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -168.0
+offset_top = 66.0
+offset_right = -18.0
+offset_bottom = 176.0
+script = ExtResource("3_minimap")
