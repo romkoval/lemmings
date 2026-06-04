@@ -83,12 +83,14 @@ func test_builder_lays_diagonal_bricks() -> void:
 	_place_terrain(Vector2i(5, 29))
 	var skill: BuilderSkill = BuilderSkill.new()
 	skill.apply(_lemming)
-	# Force a brick placement by ticking past TICKS_PER_STEP.
-	for i in range(BuilderSkill.TICKS_PER_STEP):
+	# First tick lays the plank, then the lemming walks up onto it over
+	# TICKS_PER_STEP ticks — so one full step takes TICKS_PER_STEP + 1 ticks.
+	for i in range(BuilderSkill.TICKS_PER_STEP + 1):
 		skill.tick(_lemming)
-	# After one step, brick must exist at the start tile.
+	# After one step, the plank must exist at the start tile.
 	var has_brick: bool = _level.terrain_layer.get_cell_source_id(Vector2i(6, 28)) != -1
-	assert_true(has_brick, "brick should be placed at (6, 28)")
+	assert_true(has_brick, "plank should be placed at (6, 28)")
 	assert_eq(skill.steps_placed, 1)
-	# Lemming should be one tile up + one tile forward.
+	# Lemming should have finished climbing one tile up + one tile forward.
 	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)
+	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)

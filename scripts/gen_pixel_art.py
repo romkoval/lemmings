@@ -681,9 +681,34 @@ def _draw_ramp(im, x0, y0, dirn):
             p[x0 + x, y0 + sy + 4] = STONE
 
 
+def _draw_plank(im, x0, y0):
+    """Builder step: a thin wooden plank sitting at the TOP of the 16×16 cell,
+    transparent below — so a staircase reads as narrow wooden boards, not solid
+    square blocks. Collision in the tileset is still the full cell, so lemmings
+    stand and step exactly as before; only the look changes."""
+    p = im.load()
+    WOOD_L  = (0xd2, 0xa1, 0x60, 255)   # lit top edge
+    WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
+    WOOD_D  = (0x86, 0x58, 0x26, 255)   # grain / lower face
+    WOOD_DD = (0x5a, 0x39, 0x16, 255)   # underside shadow / board ends
+    for x in range(16):
+        # Plank body occupies the top 6 rows of the cell.
+        p[x0 + x, y0 + 0] = WOOD_L
+        p[x0 + x, y0 + 1] = WOOD
+        p[x0 + x, y0 + 2] = WOOD if (x + 1) % 5 else WOOD_D   # grain streaks
+        p[x0 + x, y0 + 3] = WOOD
+        p[x0 + x, y0 + 4] = WOOD_D
+        p[x0 + x, y0 + 5] = WOOD_DD
+    # Darker board ends so neighbouring steps read as separate planks.
+    for y in range(6):
+        p[x0 + 0, y0 + y] = WOOD_DD
+        p[x0 + 15, y0 + y] = WOOD_DD
+
+
 def make_tileset():
     """128×32 atlas. Row 0 cols 0..7: grass-A, dirt-A, grass-B, dirt-B, dirt-C,
-    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left."""
+    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left;
+    col 2: builder plank."""
     im = img(128, 32)
     # Terrain variants (row 0, cols 0..4)
     _draw_grass_top(im, 0, variant="A")
@@ -695,9 +720,10 @@ def make_tileset():
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
-    # Ramps (row 1, cols 0..1)
+    # Ramps (row 1, cols 0..1) + builder plank (row 1, col 2)
     _draw_ramp(im, 0, 16, "R")
     _draw_ramp(im, 16, 16, "L")
+    _draw_plank(im, 32, 16)
     return im
 
 
