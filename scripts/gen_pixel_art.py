@@ -682,30 +682,33 @@ def _draw_ramp(im, x0, y0, dirn):
 
 
 def _draw_plank(im, x0, y0):
-    """Builder step: a wooden board filling the top 12px of the 16×16 cell, with
-    a 4px transparent strip at the bottom that reads as the gap between steps. The
-    builder lays two of these per step (tread + the cell below), so a staircase
-    reads as solid wooden stairs — narrow boards, no big holes. Collision is the
-    full cell (see main_tileset.tres), so stepping/solidity is unchanged."""
+    """Builder step: a full 16×16 wooden block showing TWO lapped tread boards
+    (upper + lower, 8px each). The builder lays one per 45° step, so each block of
+    height reads as two overlapping wooden steps — no holes, same 45° angle.
+    Collision is the full cell (see main_tileset.tres)."""
     p = im.load()
-    WOOD_L  = (0xd6, 0xa6, 0x64, 255)   # lit tread edge
+    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit tread edge
     WOOD    = (0xb4, 0x80, 0x40, 255)   # board face
     WOOD_D  = (0x8a, 0x5c, 0x28, 255)   # grain
-    WOOD_DD = (0x5e, 0x3c, 0x18, 255)   # shadow / board ends
-    H = 12
-    for x in range(16):
-        for y in range(H):
-            if y == 0:
-                c = WOOD_L                       # bright tread surface
-            elif y == H - 1:
-                c = WOOD_DD                      # bottom shadow line
-            elif (x + y) % 5 == 0:
-                c = WOOD_D                        # diagonal grain streaks
-            else:
-                c = WOOD
-            p[x0 + x, y0 + y] = c
-    # Darker board ends so adjacent planks in a tread read as separate boards.
-    for y in range(H):
+    WOOD_DD = (0x55, 0x36, 0x14, 255)   # step-edge shadow / ends
+
+    def board(top, bot):
+        for y in range(top, bot + 1):
+            for x in range(16):
+                if y == top:
+                    c = WOOD_L                    # lit tread surface
+                elif y == bot:
+                    c = WOOD_DD                    # shadow under the board (step lip)
+                elif (x + y) % 5 == 0:
+                    c = WOOD_D                     # diagonal grain
+                else:
+                    c = WOOD
+                p[x0 + x, y0 + y] = c
+
+    board(0, 7)    # upper tread
+    board(8, 15)   # lower tread (lapped under the upper one)
+    # Darker side edges read as the board ends.
+    for y in range(16):
         p[x0 + 0, y0 + y] = WOOD_DD
         p[x0 + 15, y0 + y] = WOOD_DD
 
