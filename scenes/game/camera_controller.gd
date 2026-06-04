@@ -51,6 +51,20 @@ func pan_screen(delta_screen: Vector2) -> void:
 	_clamp()
 
 
+# Jump the camera so it centres on a world point (clamped to bounds). Used by the
+# minimap tap-to-navigate.
+func center_on(world_pos: Vector2) -> void:
+	position = world_pos
+	_clamp()
+
+
+# Current visible rectangle in world space — drawn as the viewport box on the
+# minimap so the player can see where they're looking.
+func visible_world_rect() -> Rect2:
+	var view: Vector2 = _base_view / zoom
+	return Rect2(position - view * 0.5, view)
+
+
 # Set an absolute zoom level (clamped), keeping the view centred. Used by pinch.
 func set_zoom_level(z: float) -> void:
 	var nz: float = clampf(z, MIN_ZOOM, MAX_ZOOM)

@@ -97,12 +97,13 @@ func load_level(scene_path: String) -> void:
 	if camera:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
 		camera.setup_bounds(current_level.get_terrain_bounds_px(), focus)
+	hud.bind_minimap(current_level, camera)
 
 
-func _input(event: InputEvent) -> void:
-	# Camera gestures (pan / zoom) work in any state; skill assignment only while
-	# playing. emulate_touch_from_mouse is on, so a left click also arrives as a
-	# touch — desktop pan/zoom therefore use the wheel and the RIGHT mouse button.
+func _unhandled_input(event: InputEvent) -> void:
+	# _unhandled_input (not _input) so taps on HUD buttons and the minimap are
+	# consumed by those controls first and never reach gameplay. Camera gestures
+	# work in any state; skill assignment only while playing.
 	if event is InputEventScreenTouch:
 		_handle_touch(event as InputEventScreenTouch)
 	elif event is InputEventScreenDrag:
@@ -154,9 +155,14 @@ func _handle_drag(sd: InputEventScreenDrag) -> void:
 	if _touches.size() >= 2:
 		_update_pinch()
 	else:
-		if sd.position.distance_to(_press_pos) > TAP_SLOP:
+		# One finger past the tap threshold = pan the scene (no longer eligible to
+		# assign a skill). Below the threshold it's still a potential tap.
+		if not _press_moved and sd.position.distance_to(_press_pos) > TAP_SLOP:
 			_press_moved = true
-		if _playing():
+			_set_highlight(null)
+		if _press_moved:
+			camera.pan_screen(sd.relative)
+		elif _playing():
 			_update_highlight(_screen_to_world(sd.position))
 
 

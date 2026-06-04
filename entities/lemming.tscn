@@ -5,7 +5,7 @@
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_lemming"]
 radius = 5.0
-height = 16.0
+height = 13.0
 
 [node name="Lemming" type="CharacterBody2D"]
 collision_layer = 2
@@ -17,7 +17,7 @@ floor_max_angle = 0.9
 script = ExtResource("1_lemming")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(8, 8)
+position = Vector2(8, 9.5)
 shape = SubResource("CapsuleShape2D_lemming")
 
 [node name="Sprite" type="AnimatedSprite2D" parent="."]

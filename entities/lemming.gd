@@ -219,6 +219,12 @@ func _is_blocker_at_front() -> bool:
 			continue
 		if lem.current_state != State.BLOCKING:
 			continue
+		# Must be on the same level: a blocker one row up or down (≥ a tile away in
+		# Y) shouldn't stop a lemming passing beneath/above it — only block walkers
+		# sharing its ground. 12px ≈ ¾ of a 16px tile of vertical tolerance.
+		var dy: float = lem.global_position.y - global_position.y
+		if abs(dy) >= 12:
+			continue
 		var dx: float = lem.global_position.x - global_position.x
 		if abs(dx) < 12 and sign(dx) == direction:
 			return true

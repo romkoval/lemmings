@@ -28,6 +28,7 @@ const BOTTOM_BAR_HEIGHT: float = 112.0
 @onready var zoom_controls: Control = $ZoomControls
 @onready var zoom_in_button: Button = $ZoomControls/ZoomIn
 @onready var zoom_out_button: Button = $ZoomControls/ZoomOut
+@onready var minimap: Control = $Minimap
 
 var time_remaining: float = 0.0
 var time_active: bool = false
@@ -94,6 +95,20 @@ func _apply_safe_area() -> void:
 	zoom_controls.offset_left = -right - 60.0
 	zoom_controls.offset_bottom = -(bottom + BOTTOM_BAR_HEIGHT + 10.0)
 	zoom_controls.offset_top = zoom_controls.offset_bottom - 128.0
+
+	# Minimap: top-right, just under the top bar (size set once a level is bound).
+	if minimap:
+		minimap.offset_right = -right
+		minimap.offset_left = -right - minimap.size.x
+		minimap.offset_top = top + TOP_BAR_HEIGHT + 10.0
+		minimap.offset_bottom = minimap.offset_top + minimap.size.y
+
+
+# Wire the minimap to the current level + camera; called by Game on level load.
+func bind_minimap(level: Node, camera: Node) -> void:
+	if minimap and minimap.has_method("bind"):
+		minimap.bind(level, camera)
+		_apply_safe_area()
 
 
 func _process(delta: float) -> void:
