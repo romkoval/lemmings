@@ -91,28 +91,38 @@ func test_builder_lays_diagonal_bricks() -> void:
 	var has_brick: bool = _level.terrain_layer.get_cell_source_id(Vector2i(6, 28)) != -1
 	assert_true(has_brick, "plank should be placed at (6, 28)")
 	assert_eq(skill.steps_placed, 1)
-	# Lemming should have finished climbing one tile up + one tile forward.
+	# Lemming finished climbing to the top corner of the ramp (one row up, at the
+	# junction with the next plank = the right edge for a rightward build).
 	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)
-	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
+	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE + Level.TILE_SIZE)
 
 
-func test_builder_lays_two_planks_per_step() -> void:
-	# Each step lays a tread plank AND a fill plank one cell below it, so the
-	# wooden staircase reads as solid (no big gaps between steps).
+func test_builder_lays_thin_diagonal_planks() -> void:
+	# Each step lays ONE thin diagonal plank (ramp tile) — no thick fill cell —
+	# stepping up the 45° line, using the rise-right atlas tile.
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
 	var skill: BuilderSkill = BuilderSkill.new()
 	skill.apply(_lemming)
-	# Two full steps.
 	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
-	# Step 0: tread (6,28) + fill (6,29).
-	assert_ne(layer.get_cell_source_id(Vector2i(6, 28)), -1, "step 0 tread")
-	assert_ne(layer.get_cell_source_id(Vector2i(6, 29)), -1, "step 0 fill plank")
-	# Step 1: tread (7,27) + fill (7,28).
-	assert_ne(layer.get_cell_source_id(Vector2i(7, 27)), -1, "step 1 tread")
-	assert_ne(layer.get_cell_source_id(Vector2i(7, 28)), -1, "step 1 fill plank")
-	# Planks use the dedicated plank atlas tile, not plain dirt.
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS)
+	# Step 0 at (6,28), step 1 at (7,27) — one cell up + one over each.
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0 plank")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1 plank")
+	# No thick fill cell below the tread (the bridge stays thin).
+	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no fill cell below step 0")
+
+
+func test_builder_uses_left_plank_when_facing_left() -> void:
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = -1
+	_place_terrain(Vector2i(5, 29))
+	var skill: BuilderSkill = BuilderSkill.new()
+	skill.apply(_lemming)
+	for i in range(BuilderSkill.TICKS_PER_STEP + 1):
+		skill.tick(_lemming)
+	# Facing left → rise-left atlas tile at the start cell.
+	assert_eq(skill._start_tile, Vector2i(5, 28))
+	assert_eq(_level.terrain_layer.get_cell_atlas_coords(Vector2i(5, 28)), BuilderSkill.PLANK_ATLAS_L)

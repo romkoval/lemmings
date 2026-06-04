@@ -156,6 +156,12 @@ func _hit_vertical_wall() -> bool:
 
 
 func _process_falling(delta: float) -> void:
+	# A floater opens its parachute the instant it starts falling — whether the
+	# skill was given mid-air or earlier while walking. Otherwise it would drop at
+	# full speed (just not splatting), which looks like a normal fall.
+	if is_floater:
+		change_state(State.FLOATING)
+		return
 	velocity.y = GRAVITY * 2.0
 	velocity.x = 0
 	move_and_slide()

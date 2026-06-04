@@ -2,19 +2,20 @@ class_name BuilderSkill
 extends BaseSkill
 
 const MAX_STEPS: int = 12
-# Ticks to lay one step and walk up onto it. A step advances one 16px cell
-# horizontally; at WALK_SPEED that cell takes 16 ticks, so 32 ticks = HALF the
-# walking pace — the builder lays the staircase at half the speed a lemming
-# walks a flat surface (design spec).
-const TICKS_PER_STEP: int = 32
-# Builder steps are thin wooden planks (atlas col 2, row 1). Collision is a full
-# cell (see main_tileset.tres), so stepping/solidity is unchanged.
-const PLANK_ATLAS: Vector2i = Vector2i(2, 1)
+# Ticks per step. The lemming climbs for CLIMB_TICKS, then holds for the rest —
+# a lay/climb/pause rhythm so the bridge is laid deliberately (slower than half
+# the walking pace), like the original game, instead of gliding up quickly.
+const TICKS_PER_STEP: int = 40
+const CLIMB_TICKS: int = 20
+# Thin diagonal plank tiles with ramp collision: col 2 rises right, col 3 rises
+# left (see main_tileset.tres). The lemming walks the diagonal as a slope, so the
+# bridge is a thin lapped-plank line, not a thick block.
+const PLANK_ATLAS_R: Vector2i = Vector2i(2, 1)
+const PLANK_ATLAS_L: Vector2i = Vector2i(3, 1)
 
 var steps_placed: int = 0
 var _start_tile: Vector2i = Vector2i.ZERO
 var _start_dir: int = 1
-# Smooth climb of the current step: slide from _from to _to over TICKS_PER_STEP.
 var _moving: bool = false
 var _move_t: int = 0
 var _from: Vector2 = Vector2.ZERO
@@ -37,7 +38,7 @@ func apply(lemming: Lemming) -> void:
 	var level: Level = _get_level(lemming)
 	if level != null:
 		# Floor tile under the lemming's leading foot, then move up one row:
-		# that's the empty cell at body level where the first brick goes.
+		# that's the empty cell at body level where the first plank goes.
 		# Probe a couple px into the floor (+18, not +16) — the body settles ~1px
 		# high, so feet+16 reads the empty cell above the floor and the staircase
 		# would start a tile too high, leaving a gap followers can't climb.
@@ -47,25 +48,28 @@ func apply(lemming: Lemming) -> void:
 	lemming.change_state(Lemming.State.BUILDING)
 
 
-# Tread cell for the Nth step — a 45° staircase (one cell up + one cell over per
-# step), so per-builder reach is unchanged.
+func plank_atlas() -> Vector2i:
+	return PLANK_ATLAS_R if _start_dir > 0 else PLANK_ATLAS_L
+
+
+# Plank cell for the Nth step: a 45° line, one cell up + one cell over per step.
 func _tile_for_step(n: int) -> Vector2i:
 	return Vector2i(_start_tile.x + n * _start_dir, _start_tile.y - n)
 
 
 func tick(lemming: Lemming) -> void:
-	# Phase 1: walking up the step just laid. Slide smoothly so movement and
-	# laying share the same (half-walk) pace.
+	# Phase 1: walking up the diagonal of the plank just laid, then holding for
+	# the rest of the step (the pause that makes laying read as deliberate).
 	if _moving:
 		_move_t += 1
-		var f: float = clampf(float(_move_t) / float(TICKS_PER_STEP), 0.0, 1.0)
+		var f: float = clampf(float(_move_t) / float(CLIMB_TICKS), 0.0, 1.0)
 		lemming.global_position = _from.lerp(_to, f)
 		if _move_t >= TICKS_PER_STEP:
 			_moving = false
 			if steps_placed >= MAX_STEPS:
 				lemming.change_state(Lemming.State.WALKING)
 		return
-	# Phase 2: lay the next step, then start walking onto it.
+	# Phase 2: lay the next plank, then start climbing it.
 	if steps_placed >= MAX_STEPS:
 		lemming.change_state(Lemming.State.WALKING)
 		return
@@ -74,18 +78,15 @@ func tick(lemming: Lemming) -> void:
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	var tile: Vector2i = _tile_for_step(steps_placed)
-	# Tread plank. Stop if it can't be placed (cell occupied or off-map).
-	if not level.add_terrain_at(tile, 0, PLANK_ATLAS):
+	# Stop if a plank can't be placed (cell occupied or off-map).
+	if not level.add_terrain_at(tile, 0, plank_atlas()):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	# Second plank one cell below the tread closes the gap to the previous step,
-	# so the staircase reads as solid wooden stairs (two planks per block) instead
-	# of floating boards. Best-effort: skip silently if that cell is taken (e.g.
-	# the floor under the first step).
-	level.add_terrain_at(tile + Vector2i(0, 1), 0, PLANK_ATLAS)
 	_from = lemming.global_position
+	# Climb to the top corner of this ramp (its junction with the next plank), so
+	# the slide runs exactly along the diagonal surface.
 	_to = Vector2(
-		tile.x * Level.TILE_SIZE,
+		tile.x * Level.TILE_SIZE + 8 + _start_dir * 8,
 		tile.y * Level.TILE_SIZE - Level.TILE_SIZE
 	)
 	_moving = true
