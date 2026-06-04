@@ -1,5 +1,9 @@
-class_name GameCamera
 extends Camera2D
+
+# NOTE: intentionally no `class_name` — game.gd references this script via
+# preload() instead, so the level scene never depends on the global script-class
+# cache being up to date (a stale cache used to break the whole game scene with
+# `Could not find type "GameCamera"`).
 
 # Player-controllable camera for the level view.
 #

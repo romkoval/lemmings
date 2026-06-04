@@ -70,10 +70,14 @@ func _apply_safe_area() -> void:
 	var vp: Vector2 = get_viewport_rect().size
 	var sx: float = vp.x / float(maxi(1, win.x))
 	var sy: float = vp.y / float(maxi(1, win.y))
-	var left: float = EDGE_MARGIN + float(safe.position.x) * sx
-	var top: float = EDGE_MARGIN + float(safe.position.y) * sy
-	var right: float = EDGE_MARGIN + float(win.x - safe.end.x) * sx
-	var bottom: float = EDGE_MARGIN + float(win.y - safe.end.y) * sy
+	# Safe-area insets, scaled into design space. Clamp each to a sane range so a
+	# bogus/empty safe area from the OS can never push a panel off-screen.
+	var max_x: float = vp.x * 0.25
+	var max_y: float = vp.y * 0.25
+	var left: float = EDGE_MARGIN + clampf(float(safe.position.x) * sx, 0.0, max_x)
+	var top: float = EDGE_MARGIN + clampf(float(safe.position.y) * sy, 0.0, max_y)
+	var right: float = EDGE_MARGIN + clampf(float(win.x - safe.end.x) * sx, 0.0, max_x)
+	var bottom: float = EDGE_MARGIN + clampf(float(win.y - safe.end.y) * sy, 0.0, max_y)
 
 	top_bar.offset_left = left
 	top_bar.offset_right = -right

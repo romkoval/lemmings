@@ -3,12 +3,15 @@ extends Node2D
 
 const HUD_SCENE: PackedScene = preload("res://ui/hud.tscn")
 const RESULT_SCENE: PackedScene = preload("res://ui/result_screen.tscn")
+# Preloaded as a type (not via class_name) so the game scene doesn't depend on
+# the global script-class cache — see camera_controller.gd.
+const GameCameraScript = preload("res://scenes/game/camera_controller.gd")
 
 @export var initial_level_path: String = ""
 
 @onready var level_container: Node2D = $LevelContainer
 @onready var hud_layer: CanvasLayer = $HUDLayer
-@onready var camera: GameCamera = $Camera2D
+@onready var camera: GameCameraScript = $Camera2D
 
 # How far (screen px) a single finger may move before it counts as a drag rather
 # than a tap — past this, releasing it won't assign a skill.
