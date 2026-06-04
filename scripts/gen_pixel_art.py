@@ -682,25 +682,30 @@ def _draw_ramp(im, x0, y0, dirn):
 
 
 def _draw_plank(im, x0, y0):
-    """Builder step: a thin wooden plank sitting at the TOP of the 16×16 cell,
-    transparent below — so a staircase reads as narrow wooden boards, not solid
-    square blocks. Collision in the tileset is still the full cell, so lemmings
-    stand and step exactly as before; only the look changes."""
+    """Builder step: a wooden board filling the top 12px of the 16×16 cell, with
+    a 4px transparent strip at the bottom that reads as the gap between steps. The
+    builder lays two of these per step (tread + the cell below), so a staircase
+    reads as solid wooden stairs — narrow boards, no big holes. Collision is the
+    full cell (see main_tileset.tres), so stepping/solidity is unchanged."""
     p = im.load()
-    WOOD_L  = (0xd2, 0xa1, 0x60, 255)   # lit top edge
-    WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
-    WOOD_D  = (0x86, 0x58, 0x26, 255)   # grain / lower face
-    WOOD_DD = (0x5a, 0x39, 0x16, 255)   # underside shadow / board ends
+    WOOD_L  = (0xd6, 0xa6, 0x64, 255)   # lit tread edge
+    WOOD    = (0xb4, 0x80, 0x40, 255)   # board face
+    WOOD_D  = (0x8a, 0x5c, 0x28, 255)   # grain
+    WOOD_DD = (0x5e, 0x3c, 0x18, 255)   # shadow / board ends
+    H = 12
     for x in range(16):
-        # Plank body occupies the top 6 rows of the cell.
-        p[x0 + x, y0 + 0] = WOOD_L
-        p[x0 + x, y0 + 1] = WOOD
-        p[x0 + x, y0 + 2] = WOOD if (x + 1) % 5 else WOOD_D   # grain streaks
-        p[x0 + x, y0 + 3] = WOOD
-        p[x0 + x, y0 + 4] = WOOD_D
-        p[x0 + x, y0 + 5] = WOOD_DD
-    # Darker board ends so neighbouring steps read as separate planks.
-    for y in range(6):
+        for y in range(H):
+            if y == 0:
+                c = WOOD_L                       # bright tread surface
+            elif y == H - 1:
+                c = WOOD_DD                      # bottom shadow line
+            elif (x + y) % 5 == 0:
+                c = WOOD_D                        # diagonal grain streaks
+            else:
+                c = WOOD
+            p[x0 + x, y0 + y] = c
+    # Darker board ends so adjacent planks in a tread read as separate boards.
+    for y in range(H):
         p[x0 + 0, y0 + y] = WOOD_DD
         p[x0 + 15, y0 + y] = WOOD_DD
 

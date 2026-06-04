@@ -108,8 +108,10 @@ func _process_walking(delta: float) -> void:
 		return
 	# A blocker stops walkers by proximity, not by physical collision: lemmings
 	# share no collision mask with each other (mask = terrain only), so two bodies
-	# pass straight through. Detect the blocker ahead and turn before moving.
-	if _is_blocker_at_front():
+	# pass straight through. Detect the blocker ahead and turn before moving. A
+	# builder met head-on counts too (so a walker doesn't march through it), but a
+	# follower coming up behind the builder is let past to climb the stairs.
+	if _is_blocker_at_front() or _is_head_on_builder_at_front():
 		turn_around()
 		return
 	# Only a small downward "stick" force while grounded — NOT full gravity. On a
@@ -235,6 +237,26 @@ func _is_blocker_at_front() -> bool:
 			continue
 		var dx: float = lem.global_position.x - global_position.x
 		if abs(dx) < 12 and sign(dx) == direction:
+			return true
+	return false
+
+
+# A walker meeting a building lemming head-on (the builder is right in front and
+# facing back toward this lemming) turns around, instead of walking through it.
+# A follower approaching from behind (same facing) is NOT turned — it should walk
+# up the staircase the builder is laying.
+func _is_head_on_builder_at_front() -> bool:
+	for other in get_tree().get_nodes_in_group("lemmings"):
+		if other == self:
+			continue
+		var lem := other as Lemming
+		if lem == null or lem.current_state != State.BUILDING:
+			continue
+		var dy: float = lem.global_position.y - global_position.y
+		if abs(dy) >= 12:
+			continue
+		var dx: float = lem.global_position.x - global_position.x
+		if abs(dx) < 12 and signf(dx) == direction and lem.direction == -direction:
 			return true
 	return false
 

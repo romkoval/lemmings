@@ -94,3 +94,25 @@ func test_builder_lays_diagonal_bricks() -> void:
 	# Lemming should have finished climbing one tile up + one tile forward.
 	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)
 	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
+
+
+func test_builder_lays_two_planks_per_step() -> void:
+	# Each step lays a tread plank AND a fill plank one cell below it, so the
+	# wooden staircase reads as solid (no big gaps between steps).
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	var skill: BuilderSkill = BuilderSkill.new()
+	skill.apply(_lemming)
+	# Two full steps.
+	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
+		skill.tick(_lemming)
+	var layer := _level.terrain_layer
+	# Step 0: tread (6,28) + fill (6,29).
+	assert_ne(layer.get_cell_source_id(Vector2i(6, 28)), -1, "step 0 tread")
+	assert_ne(layer.get_cell_source_id(Vector2i(6, 29)), -1, "step 0 fill plank")
+	# Step 1: tread (7,27) + fill (7,28).
+	assert_ne(layer.get_cell_source_id(Vector2i(7, 27)), -1, "step 1 tread")
+	assert_ne(layer.get_cell_source_id(Vector2i(7, 28)), -1, "step 1 fill plank")
+	# Planks use the dedicated plank atlas tile, not plain dirt.
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS)
