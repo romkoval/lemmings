@@ -50,6 +50,21 @@ func test_cannot_step_up_when_no_wall_in_front() -> void:
 	assert_false(_lemming.can_step_up())
 
 
+func test_blocker_falls_when_undermined() -> void:
+	# A blocker standing on a floor tile must drop to FALLING once that tile is
+	# dug away beneath it (regression: it used to hang in mid-air).
+	GameManager.set_state(GameManager.GameState.PLAYING)
+	_lemming.global_position = Vector2(80, 448)
+	_place_terrain(Vector2i(5, 29))
+	_lemming.change_state(Lemming.State.BLOCKING)
+	await wait_physics_frames(6)
+	assert_eq(_lemming.current_state, Lemming.State.BLOCKING, "stays blocking while supported")
+	_level.terrain_layer.erase_cell(Vector2i(5, 29))
+	await wait_physics_frames(12)
+	assert_eq(_lemming.current_state, Lemming.State.FALLING, "falls once undermined")
+	GameManager.set_state(GameManager.GameState.MENU)
+
+
 func test_builder_records_diagonal_start_tile() -> void:
 	# Lemming standing on tile (5, 29) facing right.
 	_lemming.global_position = Vector2(80, 448)

@@ -187,7 +187,15 @@ func _process_climbing(delta: float) -> void:
 
 
 func _process_blocking(_delta: float) -> void:
-	velocity = Vector2.ZERO
+	# A blocker holds its X but must still respect gravity: if the ground beneath
+	# it is dug away it should fall, not hang in the air. Stick lightly to the
+	# floor (so floor-snap keeps it put on slopes) and drop to FALLING the moment
+	# there's nothing under it.
+	velocity.x = 0.0
+	velocity.y = GROUND_STICK
+	move_and_slide()
+	if not is_on_floor():
+		change_state(State.FALLING)
 
 
 func _process_skill(_delta: float) -> void:
