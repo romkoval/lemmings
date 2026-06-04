@@ -28,6 +28,8 @@ var selected: String = ""
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 6)
+	# Centre the row so the inset bottom bar keeps the buttons clear of the edges.
+	alignment = BoxContainer.ALIGNMENT_CENTER
 	for skill_name in SKILL_ORDER:
 		var btn := Button.new()
 		btn.set_script(load("res://ui/skill_button.gd"))

@@ -67,6 +67,21 @@ func add_terrain_at(tile_coord: Vector2i, source_id: int = DIRT_SOURCE, atlas: V
 	return true
 
 
+# Bounding box of all placed terrain + steel, in world pixels. Used by the
+# camera to clamp panning so the view never drifts off the built level.
+func get_terrain_bounds_px() -> Rect2:
+	var r: Rect2i = Rect2i()
+	if terrain_layer != null:
+		r = terrain_layer.get_used_rect()
+	if steel_layer != null:
+		var rs: Rect2i = steel_layer.get_used_rect()
+		if rs.has_area():
+			r = rs if not r.has_area() else r.merge(rs)
+	if not r.has_area():
+		return Rect2(0, 0, 720, 1280)
+	return Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+
+
 func world_to_tile(world_pos: Vector2) -> Vector2i:
 	# floori (not int truncation) so negative world coordinates map correctly:
 	# a lemming at x=-1 belongs to tile -1, not tile 0.

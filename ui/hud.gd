@@ -5,8 +5,16 @@ signal pause_pressed()
 signal nuke_pressed()
 signal skill_chosen(skill_name: String)
 signal time_expired()
+signal zoom_in_pressed()
+signal zoom_out_pressed()
 
 const FAST_SPEED: float = 3.0
+# Minimum gap (base px) kept between any control and the screen edge, on top of
+# the device safe-area inset — so controls never merge with the phone's bezel,
+# notch or rounded corners.
+const EDGE_MARGIN: float = 18.0
+const TOP_BAR_HEIGHT: float = 56.0
+const BOTTOM_BAR_HEIGHT: float = 112.0
 
 @onready var skill_panel: SkillPanel = $BottomBar/SkillPanel
 @onready var saved_label: Label = $TopBar/SavedLabel
@@ -15,6 +23,11 @@ const FAST_SPEED: float = 3.0
 @onready var fast_button: Button = $TopBar/FastButton
 @onready var pause_button: Button = $TopBar/PauseButton
 @onready var nuke_button: Button = $TopBar/NukeButton
+@onready var top_bar: Control = $TopBar
+@onready var bottom_bar: Control = $BottomBar
+@onready var zoom_controls: Control = $ZoomControls
+@onready var zoom_in_button: Button = $ZoomControls/ZoomIn
+@onready var zoom_out_button: Button = $ZoomControls/ZoomOut
 
 var time_remaining: float = 0.0
 var time_active: bool = false
@@ -37,6 +50,46 @@ func _ready() -> void:
 	for btn in [pause_button, nuke_button]:
 		if btn:
 			btn.add_theme_font_size_override("font_size", 18)
+	zoom_in_button.pressed.connect(func(): zoom_in_pressed.emit())
+	zoom_out_button.pressed.connect(func(): zoom_out_pressed.emit())
+	for zb in [zoom_in_button, zoom_out_button]:
+		zb.add_theme_font_size_override("font_size", 30)
+	# Keep controls clear of notches / rounded corners, and re-apply if the
+	# window is rotated or resized.
+	_apply_safe_area()
+	get_viewport().size_changed.connect(_apply_safe_area)
+
+
+# Inset the HUD from the screen edges by the device safe area (notch / home
+# indicator) plus a fixed margin, so nothing hugs the bezel. All HUD geometry is
+# in the base 720×1280 design space; the OS safe area is in real device pixels,
+# so we scale it down by viewport/window before applying.
+func _apply_safe_area() -> void:
+	var win: Vector2i = DisplayServer.window_get_size()
+	var safe: Rect2i = DisplayServer.get_display_safe_area()
+	var vp: Vector2 = get_viewport_rect().size
+	var sx: float = vp.x / float(maxi(1, win.x))
+	var sy: float = vp.y / float(maxi(1, win.y))
+	var left: float = EDGE_MARGIN + float(safe.position.x) * sx
+	var top: float = EDGE_MARGIN + float(safe.position.y) * sy
+	var right: float = EDGE_MARGIN + float(win.x - safe.end.x) * sx
+	var bottom: float = EDGE_MARGIN + float(win.y - safe.end.y) * sy
+
+	top_bar.offset_left = left
+	top_bar.offset_right = -right
+	top_bar.offset_top = top
+	top_bar.offset_bottom = top + TOP_BAR_HEIGHT
+
+	bottom_bar.offset_left = left
+	bottom_bar.offset_right = -right
+	bottom_bar.offset_bottom = -bottom
+	bottom_bar.offset_top = -(bottom + BOTTOM_BAR_HEIGHT)
+
+	# Zoom buttons sit just above the skill panel, against the right inset.
+	zoom_controls.offset_right = -right
+	zoom_controls.offset_left = -right - 60.0
+	zoom_controls.offset_bottom = -(bottom + BOTTOM_BAR_HEIGHT + 10.0)
+	zoom_controls.offset_top = zoom_controls.offset_bottom - 128.0
 
 
 func _process(delta: float) -> void:

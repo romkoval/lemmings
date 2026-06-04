@@ -8,6 +8,22 @@ const RESULT_SCENE: PackedScene = preload("res://ui/result_screen.tscn")
 
 @onready var level_container: Node2D = $LevelContainer
 @onready var hud_layer: CanvasLayer = $HUDLayer
+@onready var camera: GameCamera = $Camera2D
+
+# How far (screen px) a single finger may move before it counts as a drag rather
+# than a tap — past this, releasing it won't assign a skill.
+const TAP_SLOP: float = 16.0
+
+# Active touch points, keyed by finger index → last known screen position. Used
+# to tell a one-finger tap (assign skill) from a two-finger gesture (pan/zoom).
+var _touches: Dictionary = {}
+var _gesture_active: bool = false   # ≥2 fingers were down during this interaction
+var _press_pos: Vector2 = Vector2.ZERO
+var _press_moved: bool = false
+var _pinch_start_dist: float = 0.0
+var _pinch_start_zoom: float = 1.0
+var _pan_last_centroid: Vector2 = Vector2.ZERO
+var _mouse_panning: bool = false
 
 var current_level: Level = null
 var current_level_path: String = ""
@@ -31,6 +47,8 @@ func _ready() -> void:
 	hud.pause_pressed.connect(_on_pause)
 	hud.nuke_pressed.connect(_on_nuke)
 	hud.skill_chosen.connect(_on_skill_chosen)
+	hud.zoom_in_pressed.connect(func(): camera.zoom_in())
+	hud.zoom_out_pressed.connect(func(): camera.zoom_out())
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
 	hud.time_expired.connect(_on_time_expired)
 	GameManager.all_lemmings_resolved.connect(_on_all_resolved)
@@ -71,24 +89,103 @@ func load_level(scene_path: String) -> void:
 		skill_manager.skill_counts,
 	)
 	GameManager.start_level(current_level.level_id, current_level.total_lemmings)
+	# Frame the camera on the level: clamp panning to the terrain and centre on
+	# the entrance so the first lemmings are visible immediately.
+	if camera:
+		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
+		camera.setup_bounds(current_level.get_terrain_bounds_px(), focus)
 
 
 func _input(event: InputEvent) -> void:
-	if GameManager.current_state != GameManager.GameState.PLAYING:
-		_set_highlight(null)
-		return
-	# emulate_touch_from_mouse is on, so a desktop click arrives as a touch too —
-	# handle assignment only via touch to avoid assigning twice.
-	if event is InputEventMouseMotion:
-		_update_highlight(get_global_mouse_position())
-	elif event is InputEventScreenTouch:
-		var st := event as InputEventScreenTouch
-		if st.pressed:
-			# event.position is in screen space — map it into the world.
-			_try_assign_at(_screen_to_world(st.position))
+	# Camera gestures (pan / zoom) work in any state; skill assignment only while
+	# playing. emulate_touch_from_mouse is on, so a left click also arrives as a
+	# touch — desktop pan/zoom therefore use the wheel and the RIGHT mouse button.
+	if event is InputEventScreenTouch:
+		_handle_touch(event as InputEventScreenTouch)
 	elif event is InputEventScreenDrag:
-		var sd := event as InputEventScreenDrag
-		_update_highlight(_screen_to_world(sd.position))
+		_handle_drag(event as InputEventScreenDrag)
+	elif event is InputEventMouseButton:
+		_handle_mouse_button(event as InputEventMouseButton)
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if _mouse_panning:
+			camera.pan_screen(mm.relative)
+		elif _playing():
+			_update_highlight(get_global_mouse_position())
+
+
+func _playing() -> bool:
+	return GameManager.current_state == GameManager.GameState.PLAYING
+
+
+# ── Touch: one finger = aim/assign, two fingers = pan + pinch-zoom ──────────
+func _handle_touch(st: InputEventScreenTouch) -> void:
+	if st.pressed:
+		_touches[st.index] = st.position
+		if _touches.size() == 1:
+			_press_pos = st.position
+			_press_moved = false
+			_gesture_active = false
+			if _playing():
+				_update_highlight(_screen_to_world(st.position))
+		elif _touches.size() == 2:
+			_gesture_active = true
+			_set_highlight(null)
+			_begin_pinch()
+	else:
+		_touches.erase(st.index)
+		if _touches.is_empty():
+			# Interaction ended: a clean single-finger tap assigns the skill.
+			if _playing() and not _gesture_active and not _press_moved:
+				_try_assign_at(_screen_to_world(st.position))
+			_set_highlight(null)
+			_gesture_active = false
+		elif _touches.size() == 1:
+			# Dropped from two fingers to one — re-seat the pan anchor so the
+			# remaining finger doesn't cause a jump.
+			_pan_last_centroid = _touches.values()[0]
+
+
+func _handle_drag(sd: InputEventScreenDrag) -> void:
+	_touches[sd.index] = sd.position
+	if _touches.size() >= 2:
+		_update_pinch()
+	else:
+		if sd.position.distance_to(_press_pos) > TAP_SLOP:
+			_press_moved = true
+		if _playing():
+			_update_highlight(_screen_to_world(sd.position))
+
+
+func _begin_pinch() -> void:
+	var pts: Array = _touches.values()
+	_pinch_start_dist = maxf(1.0, pts[0].distance_to(pts[1]))
+	_pinch_start_zoom = camera.zoom.x
+	_pan_last_centroid = (pts[0] + pts[1]) * 0.5
+
+
+func _update_pinch() -> void:
+	var pts: Array = _touches.values()
+	var dist: float = maxf(1.0, pts[0].distance_to(pts[1]))
+	var centroid: Vector2 = (pts[0] + pts[1]) * 0.5
+	camera.set_zoom_level(_pinch_start_zoom * (dist / _pinch_start_dist))
+	camera.pan_screen(centroid - _pan_last_centroid)
+	_pan_last_centroid = centroid
+
+
+# ── Desktop: wheel zooms, right-drag pans ──────────────────────────────────
+func _handle_mouse_button(mb: InputEventMouseButton) -> void:
+	match mb.button_index:
+		MOUSE_BUTTON_WHEEL_UP:
+			if mb.pressed:
+				camera.zoom_in()
+		MOUSE_BUTTON_WHEEL_DOWN:
+			if mb.pressed:
+				camera.zoom_out()
+		MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE:
+			_mouse_panning = mb.pressed
+			if _mouse_panning:
+				_set_highlight(null)
 
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
