@@ -33,6 +33,13 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
 
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
+; iOS plays "Ambient" audio only when the ringer switch is on — a game should
+; sound regardless of the silent switch, so use the Playback category (index 3).
+general/ios/session_category=3
+
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true

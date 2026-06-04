@@ -6,6 +6,7 @@ var completed_levels: Dictionary = {}
 var settings: Dictionary = {
 	"music_volume": 0.8,
 	"sfx_volume": 1.0,
+	"muted": false,
 	"locale": "ru",
 }
 
@@ -49,7 +50,11 @@ func load_progress() -> void:
 		return
 	var data: Dictionary = json.data
 	completed_levels = data.get("completed_levels", {})
-	settings = data.get("settings", settings)
+	# Merge saved settings over the defaults so a save written by an older build
+	# (missing newer keys like "muted") still gets sane values for them.
+	var saved: Dictionary = data.get("settings", {})
+	for key in saved.keys():
+		settings[key] = saved[key]
 
 
 func reset_progress() -> void:
