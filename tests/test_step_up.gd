@@ -96,9 +96,9 @@ func test_builder_lays_diagonal_bricks() -> void:
 	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
 
 
-func test_builder_lays_horizontal_blocks() -> void:
-	# Each step lays one horizontal wooden step tile up the 45° line (rise-right
-	# atlas tile), no thick fill cell below.
+func test_builder_lays_connected_horizontal_blocks() -> void:
+	# Each step lays a horizontal tread plank PLUS a fill plank one cell below, so
+	# the 45° staircase reads as connected horizontal blocks (no gaps).
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
@@ -107,21 +107,11 @@ func test_builder_lays_horizontal_blocks() -> void:
 	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
-	# Step 0 at (6,28), step 1 at (7,27) — one cell up + one over each.
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0 plank")
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1 plank")
-	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no fill cell (single tile)")
-
-
-func test_builder_uses_left_tile_when_facing_left() -> void:
-	_lemming.global_position = Vector2(80, 448)
-	_lemming.direction = -1
-	_place_terrain(Vector2i(5, 29))
-	var skill: BuilderSkill = BuilderSkill.new()
-	skill.apply(_lemming)
-	for i in range(BuilderSkill.TICKS_PER_STEP + 1):
-		skill.tick(_lemming)
-	assert_eq(_level.terrain_layer.get_cell_atlas_coords(skill._start_tile), BuilderSkill.PLANK_ATLAS_L)
+	# Step 0: tread (6,28) + fill (6,29).  Step 1: tread (7,27) + fill (7,28).
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS, "step 0 tread")
+	assert_ne(layer.get_cell_source_id(Vector2i(6, 29)), -1, "step 0 fill")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS, "step 1 tread")
+	assert_ne(layer.get_cell_source_id(Vector2i(7, 28)), -1, "step 1 fill")
 
 
 func test_digger_sinks_gradually() -> void:

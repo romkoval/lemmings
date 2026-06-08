@@ -326,11 +326,11 @@ func _try_step_up() -> bool:
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
 	var tile_left: float = float(wall_tile.x * Level.TILE_SIZE)
 	var target_y: float = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
-	# Land the body centre a few px onto the step from the side it entered, so it's
-	# supported by the step tile instead of hovering beside it. Symmetric in both
-	# directions (an absolute-tile-X snap jumped a full tile going right but barely
-	# moved going left).
-	var target_x: float = tile_left - 4.0 if direction > 0 else tile_left + 4.0
+	# Land the body squarely on the CENTRE of the step (origin = tile_left puts the
+	# collision capsule, centred at origin+8, over the cell's middle). Landing near
+	# the entering edge instead let the body's far side hang over a drop, and over a
+	# chasm (a builder bridge) it would slip and bounce WALKING/FALLING forever.
+	var target_x: float = tile_left
 	# Climb onto the step gradually rather than teleporting: an instant jump moved
 	# the body ~18px in one frame, so the crowd ascended a staircase about twice as
 	# fast as they walk on flat ground. Sliding toward the step top at WALK_SPEED
