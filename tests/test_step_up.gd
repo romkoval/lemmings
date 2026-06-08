@@ -128,6 +128,26 @@ func test_builder_lays_separate_planks_no_fill() -> void:
 	assert_eq(_plank_sprite_count(), skill.planks_laid, "one sprite per plank")
 
 
+func test_walker_unburies_when_terrain_stamped_on_it() -> void:
+	# Regression: when one lemming builds a stair brick on top of another (or a
+	# builder finishes inside foreign stairs), the buried body must climb out of
+	# the solid tile instead of getting stuck in the texture.
+	GameManager.set_state(GameManager.GameState.PLAYING)
+	_lemming.global_position = Vector2(80, 448)  # origin at tile (5,28), feet on (5,29)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))              # floor under it
+	await wait_physics_frames(4)                 # settle, WALKING
+	assert_eq(_lemming.current_state, Lemming.State.WALKING, "walking on the floor")
+	# Bury the body: stamp a solid tile right where the torso is.
+	_place_terrain(Vector2i(5, 28))
+	var y_before: float = _lemming.global_position.y
+	await wait_physics_frames(8)
+	# Lifted up onto the new tile, not embedded inside it.
+	assert_lt(_lemming.global_position.y, y_before - 4.0, "climbed out of the buried tile")
+	assert_false(_lemming._terrain_overlap(_lemming.global_position), "body no longer in solid")
+	GameManager.set_state(GameManager.GameState.MENU)
+
+
 func test_digger_sinks_gradually() -> void:
 	# The digger sinks a few px per tick and carves one block at a time, so blocks
 	# don't vanish in an instant cascade.

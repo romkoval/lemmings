@@ -51,6 +51,10 @@ var highlighted: bool = false
 # body slides toward _step_target at walking speed instead of teleporting.
 var _stepping_up: bool = false
 var _step_target: Vector2 = Vector2.ZERO
+# Cached shape query used to detect (and climb out of) being buried inside
+# terrain — e.g. when another lemming builds a stair brick right where this one
+# stands. Lazily built in _terrain_overlap so every lemming reuses one object.
+var _embed_query: PhysicsShapeQueryParameters2D = null
 
 @onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
@@ -106,6 +110,10 @@ func _process_walking(delta: float) -> void:
 	if _stepping_up:
 		_advance_step_up(delta)
 		return
+	# Un-bury first: another lemming may have built a stair brick on top of this
+	# one (or this lemming just finished building inside foreign stairs), leaving
+	# the body embedded in solid terrain that move_and_slide can't push out of.
+	_unembed_from_terrain()
 	# A blocker stops walkers by proximity, not by physical collision: lemmings
 	# share no collision mask with each other (mask = terrain only), so two bodies
 	# pass straight through. Detect the blocker ahead and turn before moving. A
@@ -287,6 +295,42 @@ func _ray_hits(space: PhysicsDirectSpaceState2D, from: Vector2, offset: Vector2)
 	query.collide_with_bodies = true
 	query.exclude = [self]
 	return not space.intersect_ray(query).is_empty()
+
+
+# True when the body would be genuinely penetrating solid terrain at `at`. The
+# probe capsule is inset ~1.5px from the real collision shape so resting contact
+# on a floor or 45° ramp does NOT register — only a real burial (≥ a couple px)
+# does. Masks terrain/steel only (layer 1); other lemmings (layer 2) are ignored.
+func _terrain_overlap(at: Vector2) -> bool:
+	if _embed_query == null:
+		var shape := CapsuleShape2D.new()
+		shape.radius = 3.5
+		shape.height = 10.0
+		_embed_query = PhysicsShapeQueryParameters2D.new()
+		_embed_query.shape = shape
+		_embed_query.collision_mask = 1
+		_embed_query.collide_with_areas = false
+		_embed_query.collide_with_bodies = true
+		_embed_query.exclude = [get_rid()]
+	# CollisionShape2D sits at local (8, 9.5) on the body.
+	_embed_query.transform = Transform2D(0.0, at + Vector2(8, 9.5))
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	return not space.intersect_shape(_embed_query, 1).is_empty()
+
+
+# If the body is buried in terrain, lift it straight up onto the surface so it is
+# never trapped inside the tiles. Capped at ~20px (just over a tile) so a fully
+# enclosed body isn't punched through a ceiling — that case is left for the next
+# frame instead.
+func _unembed_from_terrain() -> void:
+	if not _terrain_overlap(global_position):
+		return
+	var lifted: Vector2 = global_position
+	for _i in range(20):
+		lifted.y -= 1.0
+		if not _terrain_overlap(lifted):
+			global_position = lifted
+			return
 
 
 func _get_level() -> Level:
