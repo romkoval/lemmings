@@ -681,38 +681,34 @@ def _draw_ramp(im, x0, y0, dirn):
             p[x0 + x, y0 + sy + 4] = STONE
 
 
-def _draw_plank(im, x0, y0, dirn):
-    """Builder step: a single horizontal wooden PLANK — a rectangle wider than it
-    is tall (16×PLANK_H), sitting at the TOP of the cell with the lower rows left
-    transparent. Each builder step lays one of these on its own (one tile up + one
-    tile over), so the bridge reads as a run of separate rectangular planks, like
-    the original game — no full-square blocks, no fill cells. 'R'/'L' just flips
-    which short end is lit. Walk collision is still the full cell (main_tileset.tres)."""
+def make_plank_sprite():
+    """A single builder plank: a 16×8 horizontal wooden board (rectangle, wider
+    than tall). The builder lays these one at a time as Sprite2D overlays at pixel
+    positions — each new plank sits 8px higher than the last and overlaps it, so a
+    full 16×16 cell of structure is built up from TWO planks (two movements). The
+    collision is carried by a transparent full-cell tile under the planks."""
+    im = img(16, 8)
     p = im.load()
     WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top face
     WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board body
     WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain
     WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / underside + ends
-    PLANK_H = 7                          # plank thickness (rest of cell transparent)
     for x in range(16):
-        for y in range(PLANK_H):
+        for y in range(8):
             if y == 0:
                 c = WOOD_L                        # lit top surface
-            elif y == PLANK_H - 1:
+            elif y == 7:
                 c = WOOD_DD                        # shadowed underside
             elif (x + y) % 5 == 0:
                 c = WOOD_D                         # grain streaks
             else:
                 c = WOOD
-            p[x0 + x, y0 + y] = c
-    # Dark end caps so each plank reads as its own board with a clear edge.
-    for y in range(PLANK_H):
-        p[x0 + 0, y0 + y] = WOOD_DD
-        p[x0 + 15, y0 + y] = WOOD_DD
-    # Bright nub on the leading end (build direction) — a tiny "fresh-laid" glint.
-    led = 1 if dirn == "R" else 14
-    p[x0 + led, y0 + 0] = WOOD_L
-    p[x0 + led, y0 + 1] = WOOD_L
+            p[x, y] = c
+    # Dark end caps so each plank reads as its own board.
+    for y in range(8):
+        p[0, y] = WOOD_DD
+        p[15, y] = WOOD_DD
+    return im
 
 
 def make_tileset():
@@ -730,11 +726,11 @@ def make_tileset():
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
-    # Ramps (row 1, cols 0..1) + builder planks (col 2 = rise-right, col 3 = left)
+    # Ramps (row 1, cols 0..1). Cols 2..3 (builder-plank collision tiles) are left
+    # fully transparent on purpose — the visible planks are Sprite2D overlays
+    # (make_plank_sprite); these cells only carry the walk collision polygon.
     _draw_ramp(im, 0, 16, "R")
     _draw_ramp(im, 16, 16, "L")
-    _draw_plank(im, 32, 16, "R")
-    _draw_plank(im, 48, 16, "L")
     return im
 
 
@@ -1026,6 +1022,7 @@ def main():
         (SPR / "lemming_bomb.png",  make_bomb()),
         (SPR / "lemming_die.png",   make_die()),
         (SPR / "lemming_exit.png",  make_exit_anim()),
+        (SPR / "plank.png",         make_plank_sprite()),
         (SPR / "entrance.png",      make_entrance_obj()),
         (SPR / "exit_door.png",     make_exit_obj()),
         (SPR / "bg_sky.png",        make_bg_sky()),

@@ -77,42 +77,55 @@ func test_builder_records_diagonal_start_tile() -> void:
 	assert_eq(skill._start_dir, 1)
 
 
-func test_builder_lays_diagonal_bricks() -> void:
+func _plank_sprite_count() -> int:
+	var n: int = 0
+	for c in _level.get_children():
+		if c is Sprite2D and (c as Sprite2D).texture == BuilderSkill.PLANK_TEX:
+			n += 1
+	return n
+
+
+func test_builder_builds_square_from_two_planks() -> void:
+	# One 16×16 collision square is built from TWO plank movements; the collision
+	# cell is stamped only once the second plank completes the square.
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
 	var skill: BuilderSkill = BuilderSkill.new()
 	skill.apply(_lemming)
-	# First tick lays the plank, then the lemming walks up onto it over
-	# TICKS_PER_STEP ticks — so one full step takes TICKS_PER_STEP + 1 ticks.
-	for i in range(BuilderSkill.TICKS_PER_STEP + 1):
+	# A few ticks lay the first (lower) plank. Its collision cell is stamped right
+	# away so followers always have footing; the second plank only fills the top.
+	for i in range(4):
 		skill.tick(_lemming)
-	# After one step, the plank must exist at the start tile.
-	var has_brick: bool = _level.terrain_layer.get_cell_source_id(Vector2i(6, 28)) != -1
-	assert_true(has_brick, "plank should be placed at (6, 28)")
-	assert_eq(skill.steps_placed, 1)
-	# Lemming finished stepping one tile up + one tile forward onto the tread.
-	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)
-	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
+	assert_eq(skill.planks_laid, 1, "one plank laid")
+	assert_eq(skill.steps_placed, 1, "collision stamped on the first plank")
+	assert_eq(_level.terrain_layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R)
+	assert_eq(_plank_sprite_count(), 1, "one plank sprite")
+	# Run long enough to lay the second (visual) plank of the same square.
+	for i in range(BuilderSkill.TICKS_PER_PLANK * 2 + 4):
+		skill.tick(_lemming)
+	assert_gte(skill.planks_laid, 2, "at least two planks laid")
+	assert_gte(_plank_sprite_count(), 2, "second plank adds a sprite")
 
 
-func test_builder_lays_connected_step_tiles() -> void:
-	# Each step lays ONE separate rectangular plank on the 45° line — no fill/bridge
-	# cells below or beside it.
+func test_builder_lays_separate_planks_no_fill() -> void:
+	# Finished squares climb the 45° line; their collision cells sit one up + one
+	# over with no fill cell between them, and every plank is its own sprite.
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
 	var skill: BuilderSkill = BuilderSkill.new()
 	skill.apply(_lemming)
-	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
+	for i in range(BuilderSkill.TICKS_PER_PLANK * 4 + 8):
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
-	# One plank per step on the 45° line.
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0")
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1")
-	# No fill cells anywhere around the steps.
-	assert_eq(layer.get_cell_source_id(Vector2i(7, 28)), -1, "no fill below step 1")
-	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no fill below step 0")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "square 0")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "square 1")
+	assert_eq(layer.get_cell_source_id(Vector2i(7, 28)), -1, "no fill below square 1")
+	# A square's collision cell is stamped on its first (lower) plank, so squares
+	# started == ceil(planks/2); one visible sprite per plank, no fill.
+	assert_eq(skill.steps_placed, (skill.planks_laid + 1) / 2, "one collision cell per square started")
+	assert_eq(_plank_sprite_count(), skill.planks_laid, "one sprite per plank")
 
 
 func test_digger_sinks_gradually() -> void:
