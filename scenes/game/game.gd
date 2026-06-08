@@ -96,7 +96,7 @@ func load_level(scene_path: String) -> void:
 	# the entrance so the first lemmings are visible immediately.
 	if camera:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
-		camera.setup_bounds(current_level.get_terrain_bounds_px(), focus)
+		camera.setup_bounds(current_level, focus)
 	hud.bind_minimap(current_level, camera)
 
 

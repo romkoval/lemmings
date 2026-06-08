@@ -681,9 +681,40 @@ def _draw_ramp(im, x0, y0, dirn):
             p[x0 + x, y0 + sy + 4] = STONE
 
 
+def make_plank_sprite():
+    """A single builder plank: a 16×8 horizontal wooden board (rectangle, wider
+    than tall). The builder lays these one at a time as Sprite2D overlays at pixel
+    positions — each new plank sits 8px higher than the last and overlaps it, so a
+    full 16×16 cell of structure is built up from TWO planks (two movements). The
+    collision is carried by a transparent full-cell tile under the planks."""
+    im = img(16, 8)
+    p = im.load()
+    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top face
+    WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board body
+    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain
+    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / underside + ends
+    for x in range(16):
+        for y in range(8):
+            if y == 0:
+                c = WOOD_L                        # lit top surface
+            elif y == 7:
+                c = WOOD_DD                        # shadowed underside
+            elif (x + y) % 5 == 0:
+                c = WOOD_D                         # grain streaks
+            else:
+                c = WOOD
+            p[x, y] = c
+    # Dark end caps so each plank reads as its own board.
+    for y in range(8):
+        p[0, y] = WOOD_DD
+        p[15, y] = WOOD_DD
+    return im
+
+
 def make_tileset():
     """128×32 atlas. Row 0 cols 0..7: grass-A, dirt-A, grass-B, dirt-B, dirt-C,
-    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left."""
+    steel ×3 (steel at x=80/96/112). Row 1 cols 0..1: ramp-right, ramp-left;
+    col 2: builder plank."""
     im = img(128, 32)
     # Terrain variants (row 0, cols 0..4)
     _draw_grass_top(im, 0, variant="A")
@@ -695,7 +726,9 @@ def make_tileset():
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
-    # Ramps (row 1, cols 0..1)
+    # Ramps (row 1, cols 0..1). Cols 2..3 (builder-plank collision tiles) are left
+    # fully transparent on purpose — the visible planks are Sprite2D overlays
+    # (make_plank_sprite); these cells only carry the walk collision polygon.
     _draw_ramp(im, 0, 16, "R")
     _draw_ramp(im, 16, 16, "L")
     return im
@@ -989,6 +1022,7 @@ def main():
         (SPR / "lemming_bomb.png",  make_bomb()),
         (SPR / "lemming_die.png",   make_die()),
         (SPR / "lemming_exit.png",  make_exit_anim()),
+        (SPR / "plank.png",         make_plank_sprite()),
         (SPR / "entrance.png",      make_entrance_obj()),
         (SPR / "exit_door.png",     make_exit_obj()),
         (SPR / "bg_sky.png",        make_bg_sky()),

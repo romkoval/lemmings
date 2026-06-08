@@ -51,6 +51,10 @@ var highlighted: bool = false
 # body slides toward _step_target at walking speed instead of teleporting.
 var _stepping_up: bool = false
 var _step_target: Vector2 = Vector2.ZERO
+# Cached shape query used to detect (and climb out of) being buried inside
+# terrain — e.g. when another lemming builds a stair brick right where this one
+# stands. Lazily built in _terrain_overlap so every lemming reuses one object.
+var _embed_query: PhysicsShapeQueryParameters2D = null
 
 @onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
 
@@ -106,10 +110,16 @@ func _process_walking(delta: float) -> void:
 	if _stepping_up:
 		_advance_step_up(delta)
 		return
+	# Un-bury first: another lemming may have built a stair brick on top of this
+	# one (or this lemming just finished building inside foreign stairs), leaving
+	# the body embedded in solid terrain that move_and_slide can't push out of.
+	_unembed_from_terrain()
 	# A blocker stops walkers by proximity, not by physical collision: lemmings
 	# share no collision mask with each other (mask = terrain only), so two bodies
-	# pass straight through. Detect the blocker ahead and turn before moving.
-	if _is_blocker_at_front():
+	# pass straight through. Detect the blocker ahead and turn before moving. A
+	# builder met head-on counts too (so a walker doesn't march through it), but a
+	# follower coming up behind the builder is let past to climb the stairs.
+	if _is_blocker_at_front() or _is_head_on_builder_at_front():
 		turn_around()
 		return
 	# Only a small downward "stick" force while grounded — NOT full gravity. On a
@@ -154,6 +164,12 @@ func _hit_vertical_wall() -> bool:
 
 
 func _process_falling(delta: float) -> void:
+	# A floater opens its parachute the instant it starts falling — whether the
+	# skill was given mid-air or earlier while walking. Otherwise it would drop at
+	# full speed (just not splatting), which looks like a normal fall.
+	if is_floater:
+		change_state(State.FLOATING)
+		return
 	velocity.y = GRAVITY * 2.0
 	velocity.x = 0
 	move_and_slide()
@@ -239,6 +255,26 @@ func _is_blocker_at_front() -> bool:
 	return false
 
 
+# A walker meeting a building lemming head-on (the builder is right in front and
+# facing back toward this lemming) turns around, instead of walking through it.
+# A follower approaching from behind (same facing) is NOT turned — it should walk
+# up the staircase the builder is laying.
+func _is_head_on_builder_at_front() -> bool:
+	for other in get_tree().get_nodes_in_group("lemmings"):
+		if other == self:
+			continue
+		var lem := other as Lemming
+		if lem == null or lem.current_state != State.BUILDING:
+			continue
+		var dy: float = lem.global_position.y - global_position.y
+		if abs(dy) >= 12:
+			continue
+		var dx: float = lem.global_position.x - global_position.x
+		if abs(dx) < 12 and signf(dx) == direction and lem.direction == -direction:
+			return true
+	return false
+
+
 func _has_wall_at_side() -> bool:
 	# Cast from the body's leading edge (the collision box sits at x∈[3..13]
 	# around the origin, so the wall a walker stops against is ~13px ahead of
@@ -259,6 +295,42 @@ func _ray_hits(space: PhysicsDirectSpaceState2D, from: Vector2, offset: Vector2)
 	query.collide_with_bodies = true
 	query.exclude = [self]
 	return not space.intersect_ray(query).is_empty()
+
+
+# True when the body would be genuinely penetrating solid terrain at `at`. The
+# probe capsule is inset ~1.5px from the real collision shape so resting contact
+# on a floor or 45° ramp does NOT register — only a real burial (≥ a couple px)
+# does. Masks terrain/steel only (layer 1); other lemmings (layer 2) are ignored.
+func _terrain_overlap(at: Vector2) -> bool:
+	if _embed_query == null:
+		var shape := CapsuleShape2D.new()
+		shape.radius = 3.5
+		shape.height = 10.0
+		_embed_query = PhysicsShapeQueryParameters2D.new()
+		_embed_query.shape = shape
+		_embed_query.collision_mask = 1
+		_embed_query.collide_with_areas = false
+		_embed_query.collide_with_bodies = true
+		_embed_query.exclude = [get_rid()]
+	# CollisionShape2D sits at local (8, 9.5) on the body.
+	_embed_query.transform = Transform2D(0.0, at + Vector2(8, 9.5))
+	var space: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	return not space.intersect_shape(_embed_query, 1).is_empty()
+
+
+# If the body is buried in terrain, lift it straight up onto the surface so it is
+# never trapped inside the tiles. Capped at ~20px (just over a tile) so a fully
+# enclosed body isn't punched through a ceiling — that case is left for the next
+# frame instead.
+func _unembed_from_terrain() -> void:
+	if not _terrain_overlap(global_position):
+		return
+	var lifted: Vector2 = global_position
+	for _i in range(20):
+		lifted.y -= 1.0
+		if not _terrain_overlap(lifted):
+			global_position = lifted
+			return
 
 
 func _get_level() -> Level:
@@ -298,11 +370,11 @@ func _try_step_up() -> bool:
 	var wall_tile: Vector2i = level.world_to_tile(feet_world) + Vector2i(0, -1)
 	var tile_left: float = float(wall_tile.x * Level.TILE_SIZE)
 	var target_y: float = wall_tile.y * Level.TILE_SIZE - Level.TILE_SIZE
-	# Land the body centre a few px onto the step from the side it entered, so it's
-	# supported by the step tile instead of hovering beside it. Symmetric in both
-	# directions (an absolute-tile-X snap jumped a full tile going right but barely
-	# moved going left).
-	var target_x: float = tile_left - 4.0 if direction > 0 else tile_left + 4.0
+	# Land the body squarely on the CENTRE of the step (origin = tile_left puts the
+	# collision capsule, centred at origin+8, over the cell's middle). Landing near
+	# the entering edge instead let the body's far side hang over a drop, and over a
+	# chasm (a builder bridge) it would slip and bounce WALKING/FALLING forever.
+	var target_x: float = tile_left
 	# Climb onto the step gradually rather than teleporting: an instant jump moved
 	# the body ~18px in one frame, so the crowd ascended a staircase about twice as
 	# fast as they walk on flat ground. Sliding toward the step top at WALK_SPEED

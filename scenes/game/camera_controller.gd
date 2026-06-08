@@ -18,8 +18,15 @@ const DEFAULT_ZOOM: float = 2.0  # comfortable default — details are readable
 const ZOOM_STEP: float = 1.25    # multiplier per button press / wheel notch
 
 # Level extent in world pixels; the view is kept inside this. Defaults to the
-# base viewport until setup_bounds() is called with the real terrain rect.
+# base viewport until setup_bounds() is called with the real level.
 var _bounds: Rect2 = Rect2(0, 0, 720, 1280)
+# The level node — bounds are recomputed from its terrain live, so structures
+# built upward (staircases) become reachable by scrolling.
+var _level: Node = null
+# How far the view may scroll past the terrain: a generous headroom above (to
+# reach/plan tall builds) and a small margin elsewhere.
+const HEADROOM_TOP: float = 720.0
+const MARGIN: float = 64.0
 
 # Base (design) viewport size — independent of device pixels / stretch, so the
 # clamp math is deterministic across screens.
@@ -33,16 +40,28 @@ func _ready() -> void:
 	zoom = Vector2(DEFAULT_ZOOM, DEFAULT_ZOOM)
 
 
-# Constrain the camera to the level's terrain and centre it on `focus`
-# (typically the entrance) so the action is on-screen at the start.
-func setup_bounds(bounds_px: Rect2, focus: Vector2 = Vector2.INF) -> void:
-	if bounds_px.has_area():
-		_bounds = bounds_px
+# Bind the camera to a level and centre it on `focus` (typically the entrance).
+# Bounds are recomputed live from the level's terrain so built structures stay
+# reachable.
+func setup_bounds(level: Node, focus: Vector2 = Vector2.INF) -> void:
+	_level = level
+	_refresh_bounds()
 	if focus != Vector2.INF:
 		position = focus
 	else:
 		position = _bounds.get_center()
 	_clamp()
+
+
+# Recompute the pan bounds from the level's current terrain (which includes
+# anything the builder has added), plus headroom so tall builds are reachable.
+func _refresh_bounds() -> void:
+	if _level == null or not _level.has_method("get_terrain_bounds_px"):
+		return
+	var r: Rect2 = _level.get_terrain_bounds_px()
+	if not r.has_area():
+		r = Rect2(Vector2.ZERO, _base_view)
+	_bounds = r.grow_individual(MARGIN, HEADROOM_TOP, MARGIN, MARGIN)
 
 
 # Pan by a drag measured in screen pixels (divide by zoom → world pixels).
@@ -88,6 +107,7 @@ func zoom_out() -> void:
 # Keep the visible rectangle inside _bounds. On an axis where the level is
 # smaller than the view, centre on that axis instead of clamping.
 func _clamp() -> void:
+	_refresh_bounds()
 	var half: Vector2 = (_base_view * 0.5) / zoom
 	var min_x: float = _bounds.position.x + half.x
 	var max_x: float = _bounds.end.x - half.x

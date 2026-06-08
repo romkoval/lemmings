@@ -33,3 +33,7 @@ godot.zip
 /DistributionSummary.plist
 /ExportOptions.plist
 /PrivacyInfo.xcprivacy
+
+# Python bytecode
+__pycache__/
+*.pyc
