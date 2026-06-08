@@ -7,10 +7,11 @@ const MAX_STEPS: int = 12
 # walking pace) instead of shooting up.
 const TICKS_PER_STEP: int = 40
 const CLIMB_TICKS: int = 20
-# Horizontal wooden plank (atlas col 2, row 1), full-cell collision. Laid as a
-# tread plus a fill tile one cell below, so the 45° staircase reads as a
-# connected run of horizontal steps.
-const PLANK_ATLAS: Vector2i = Vector2i(2, 1)
+# Step tile (tread + riser wedge, full-cell collision). One per step; the riser
+# fills the gap to the previous step so the 45° run is one connected diagonal
+# staircase. col 2 rises right, col 3 rises left — by build direction.
+const PLANK_ATLAS_R: Vector2i = Vector2i(2, 1)
+const PLANK_ATLAS_L: Vector2i = Vector2i(3, 1)
 
 var steps_placed: int = 0
 var _start_tile: Vector2i = Vector2i.ZERO
@@ -47,6 +48,10 @@ func apply(lemming: Lemming) -> void:
 	lemming.change_state(Lemming.State.BUILDING)
 
 
+func plank_atlas() -> Vector2i:
+	return PLANK_ATLAS_R if _start_dir > 0 else PLANK_ATLAS_L
+
+
 # Tread cell for the Nth step — 45° staircase, one cell up + one cell over.
 func _tile_for_step(n: int) -> Vector2i:
 	return Vector2i(_start_tile.x + n * _start_dir, _start_tile.y - n)
@@ -74,12 +79,9 @@ func tick(lemming: Lemming) -> void:
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	var tile: Vector2i = _tile_for_step(steps_placed)
-	if not level.add_terrain_at(tile, 0, PLANK_ATLAS):
+	if not level.add_terrain_at(tile, 0, plank_atlas()):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	# Fill tile one cell below the tread closes the corner gap to the previous
-	# step (the bit the player wanted added) so the staircase reads as connected.
-	level.add_terrain_at(tile + Vector2i(0, 1), 0, PLANK_ATLAS)
 	_from = lemming.global_position
 	_to = Vector2(
 		tile.x * Level.TILE_SIZE,

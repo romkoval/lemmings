@@ -96,9 +96,9 @@ func test_builder_lays_diagonal_bricks() -> void:
 	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
 
 
-func test_builder_lays_connected_horizontal_blocks() -> void:
-	# Each step lays a horizontal tread plank PLUS a fill plank one cell below, so
-	# the 45° staircase reads as connected horizontal blocks (no gaps).
+func test_builder_lays_connected_step_tiles() -> void:
+	# Each step lays one step tile (tread + riser wedge) up the 45° line, using the
+	# rise-right atlas tile — no separate 2-wide fill cell.
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
@@ -107,11 +107,9 @@ func test_builder_lays_connected_horizontal_blocks() -> void:
 	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
-	# Step 0: tread (6,28) + fill (6,29).  Step 1: tread (7,27) + fill (7,28).
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS, "step 0 tread")
-	assert_ne(layer.get_cell_source_id(Vector2i(6, 29)), -1, "step 0 fill")
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS, "step 1 tread")
-	assert_ne(layer.get_cell_source_id(Vector2i(7, 28)), -1, "step 1 fill")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1")
+	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no 2-wide fill cell")
 
 
 func test_digger_sinks_gradually() -> void:

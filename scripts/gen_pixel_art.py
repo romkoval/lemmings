@@ -681,31 +681,31 @@ def _draw_ramp(im, x0, y0, dirn):
             p[x0 + x, y0 + sy + 4] = STONE
 
 
-def _draw_plank(im, x0, y0):
-    """Builder step: a horizontal wooden board filling the top 10px of the cell,
-    transparent below. The builder lays a tread tile plus a fill tile in the cell
-    below, so a 45° staircase reads as a CONNECTED run of horizontal wooden steps.
-    Collision is the full cell (see main_tileset.tres)."""
+def _draw_plank(im, x0, y0, dirn):
+    """Builder step: a horizontal wooden TREAD on top + a triangular RISER below
+    that slopes down to the previous step, so a 45° run of single tiles forms ONE
+    connected diagonal staircase (the block the player marked goes right into the
+    gap, per tile). 'R' rises right (riser to lower-left), 'L' rises left (riser
+    to lower-right). Single tile per step — no separate 2-wide fill. Collision is
+    the full cell (see main_tileset.tres)."""
     p = im.load()
     WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit tread surface
     WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
-    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain
-    WOOD_DD = (0x52, 0x33, 0x14, 255)   # bottom shadow / board ends
-    H = 10
+    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain / riser
+    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / ends
+    H = 7
+    # Horizontal tread board on top.
     for x in range(16):
         for y in range(H):
-            if y == 0:
-                c = WOOD_L
-            elif y == H - 1:
-                c = WOOD_DD
-            elif (x + y) % 5 == 0:
-                c = WOOD_D
-            else:
-                c = WOOD
+            c = WOOD_L if y == 0 else (WOOD_DD if y == H - 1 else (WOOD_D if (x + y) % 5 == 0 else WOOD))
             p[x0 + x, y0 + y] = c
-    for y in range(H):                  # darker board ends
-        p[x0 + 0, y0 + y] = WOOD_DD
-        p[x0 + 15, y0 + y] = WOOD_DD
+    # Riser wedge sloping down to the previous step (lower-left for R).
+    for y in range(H, 16):
+        depth = y - H
+        for x in range(16):
+            on = (x <= depth) if dirn == "R" else (x >= 15 - depth)
+            if on:
+                p[x0 + x, y0 + y] = WOOD_D if (x + y) % 5 == 0 else WOOD
 
 
 def make_tileset():
@@ -723,10 +723,11 @@ def make_tileset():
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
-    # Ramps (row 1, cols 0..1) + builder plank (row 1, col 2)
+    # Ramps (row 1, cols 0..1) + builder planks (col 2 = rise-right, col 3 = left)
     _draw_ramp(im, 0, 16, "R")
     _draw_ramp(im, 16, 16, "L")
-    _draw_plank(im, 32, 16)
+    _draw_plank(im, 32, 16, "R")
+    _draw_plank(im, 48, 16, "L")
     return im
 
 
