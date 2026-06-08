@@ -97,8 +97,8 @@ func test_builder_lays_diagonal_bricks() -> void:
 
 
 func test_builder_lays_connected_step_tiles() -> void:
-	# Each step lays one step tile (tread + riser wedge) up the 45° line, using the
-	# rise-right atlas tile — no separate 2-wide fill cell.
+	# Each step lays its solid block up the 45° line PLUS a bridge block directly
+	# below it, so consecutive steps meet edge-to-edge (no diagonal corner gap).
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
@@ -107,9 +107,13 @@ func test_builder_lays_connected_step_tiles() -> void:
 	for i in range((BuilderSkill.TICKS_PER_STEP + 1) * 2):
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
+	# Step blocks on the 45° line.
 	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0")
 	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1")
-	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no 2-wide fill cell")
+	# Bridge block under step 1 fills the corner gap between step 0 and step 1.
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 28)), BuilderSkill.PLANK_ATLAS_R, "bridge under step 1")
+	# Step 0 has no bridge below it — it rests on the ground.
+	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no bridge below step 0")
 
 
 func test_digger_sinks_gradually() -> void:
