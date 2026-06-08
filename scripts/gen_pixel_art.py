@@ -682,30 +682,39 @@ def _draw_ramp(im, x0, y0, dirn):
 
 
 def _draw_plank(im, x0, y0, dirn):
-    """Builder step: a horizontal wooden TREAD on top + a triangular RISER below
-    that slopes down to the previous step, so a 45° run of single tiles forms ONE
-    connected diagonal staircase (the block the player marked goes right into the
-    gap, per tile). 'R' rises right (riser to lower-left), 'L' rises left (riser
-    to lower-right). Single tile per step — no separate 2-wide fill. Collision is
+    """Builder step: a SOLID full-cell wooden block (16×16). Each builder step lays
+    one of these one tile up + one tile over, so a run of them forms a clean
+    diagonal staircase of solid blocks meeting corner-to-corner — no triangular
+    cut-outs, no dark gaps between steps. 'R'/'L' only flips the plank-grain shading
+    direction so the lit edge faces the way the lemming is building. Collision is
     the full cell (see main_tileset.tres)."""
     p = im.load()
-    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit tread surface
+    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top edge of each board
     WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
-    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain / riser
-    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / ends
-    H = 7
-    # Horizontal tread board on top.
-    for x in range(16):
-        for y in range(H):
-            c = WOOD_L if y == 0 else (WOOD_DD if y == H - 1 else (WOOD_D if (x + y) % 5 == 0 else WOOD))
-            p[x0 + x, y0 + y] = c
-    # Riser wedge sloping down to the previous step (lower-left for R).
-    for y in range(H, 16):
-        depth = y - H
+    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain line
+    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow under each board
+    # Three stacked horizontal planks, each ~5px tall: lit top line, body, dark
+    # bottom seam — so the block reads as wooden boards, not a flat brown square.
+    for y in range(16):
+        band = y % 5
+        if band == 0:
+            c = WOOD_L
+        elif band == 4:
+            c = WOOD_DD
+        else:
+            c = WOOD_D if (y % 2 == 0) else WOOD
         for x in range(16):
-            on = (x <= depth) if dirn == "R" else (x >= 15 - depth)
-            if on:
-                p[x0 + x, y0 + y] = WOOD_D if (x + y) % 5 == 0 else WOOD
+            p[x0 + x, y0 + y] = c
+    # A couple of vertical grain knots for texture (mirrored by build direction).
+    knots = (4, 11) if dirn == "R" else (11, 4)
+    for kx in knots:
+        for y in range(1, 15):
+            if (kx + y) % 3 == 0:
+                p[x0 + kx, y0 + y] = WOOD_D
+    # Lit outer edge on the leading side so steps read as climbing that way.
+    edge_x = 0 if dirn == "R" else 15
+    for y in range(16):
+        p[x0 + edge_x, y0 + y] = WOOD_L if y % 5 != 4 else WOOD_DD
 
 
 def make_tileset():
