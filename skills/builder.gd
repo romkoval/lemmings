@@ -72,12 +72,14 @@ func _square_target(m: int) -> Vector2:
 
 # Top-left pixel position of plank k (0-based). Each plank is OFFSET from the last
 # by half a cell up + half a cell in the build direction (8px, 8px), so the run
-# reads as overlapping stair steps rather than a stack of squares. Two planks span
-# one 16×16 cell of rise/run, matching the collision square stamped every 2 planks.
+# reads as overlapping stair steps rather than a stack of squares. The +PLANK_H
+# vertical bias drops plank 0 onto the floor (the staircase starts at the bottom,
+# not a tile up) and centres the plank band on the 45° ramp collision surface so
+# lemmings walk along the top of the steps instead of sinking into them.
 func _plank_pos(k: int) -> Vector2:
 	return Vector2(
-		_start_tile.x * Level.TILE_SIZE + k * (PLANK_H * _start_dir),
-		_start_tile.y * Level.TILE_SIZE - k * PLANK_H
+		_start_tile.x * Level.TILE_SIZE + k * PLANK_H * _start_dir,
+		_start_tile.y * Level.TILE_SIZE + PLANK_H - k * PLANK_H
 	)
 
 
