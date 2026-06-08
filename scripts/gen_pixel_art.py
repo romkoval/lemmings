@@ -682,39 +682,37 @@ def _draw_ramp(im, x0, y0, dirn):
 
 
 def _draw_plank(im, x0, y0, dirn):
-    """Builder step: a SOLID full-cell wooden block (16×16). Each builder step lays
-    one of these one tile up + one tile over, so a run of them forms a clean
-    diagonal staircase of solid blocks meeting corner-to-corner — no triangular
-    cut-outs, no dark gaps between steps. 'R'/'L' only flips the plank-grain shading
-    direction so the lit edge faces the way the lemming is building. Collision is
-    the full cell (see main_tileset.tres)."""
+    """Builder step: a single horizontal wooden PLANK — a rectangle wider than it
+    is tall (16×PLANK_H), sitting at the TOP of the cell with the lower rows left
+    transparent. Each builder step lays one of these on its own (one tile up + one
+    tile over), so the bridge reads as a run of separate rectangular planks, like
+    the original game — no full-square blocks, no fill cells. 'R'/'L' just flips
+    which short end is lit. Walk collision is still the full cell (main_tileset.tres)."""
     p = im.load()
-    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top edge of each board
-    WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
-    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain line
-    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow under each board
-    # Three stacked horizontal planks, each ~5px tall: lit top line, body, dark
-    # bottom seam — so the block reads as wooden boards, not a flat brown square.
-    for y in range(16):
-        band = y % 5
-        if band == 0:
-            c = WOOD_L
-        elif band == 4:
-            c = WOOD_DD
-        else:
-            c = WOOD_D if (y % 2 == 0) else WOOD
-        for x in range(16):
+    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top face
+    WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board body
+    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain
+    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / underside + ends
+    PLANK_H = 7                          # plank thickness (rest of cell transparent)
+    for x in range(16):
+        for y in range(PLANK_H):
+            if y == 0:
+                c = WOOD_L                        # lit top surface
+            elif y == PLANK_H - 1:
+                c = WOOD_DD                        # shadowed underside
+            elif (x + y) % 5 == 0:
+                c = WOOD_D                         # grain streaks
+            else:
+                c = WOOD
             p[x0 + x, y0 + y] = c
-    # A couple of vertical grain knots for texture (mirrored by build direction).
-    knots = (4, 11) if dirn == "R" else (11, 4)
-    for kx in knots:
-        for y in range(1, 15):
-            if (kx + y) % 3 == 0:
-                p[x0 + kx, y0 + y] = WOOD_D
-    # Lit outer edge on the leading side so steps read as climbing that way.
-    edge_x = 0 if dirn == "R" else 15
-    for y in range(16):
-        p[x0 + edge_x, y0 + y] = WOOD_L if y % 5 != 4 else WOOD_DD
+    # Dark end caps so each plank reads as its own board with a clear edge.
+    for y in range(PLANK_H):
+        p[x0 + 0, y0 + y] = WOOD_DD
+        p[x0 + 15, y0 + y] = WOOD_DD
+    # Bright nub on the leading end (build direction) — a tiny "fresh-laid" glint.
+    led = 1 if dirn == "R" else 14
+    p[x0 + led, y0 + 0] = WOOD_L
+    p[x0 + led, y0 + 1] = WOOD_L
 
 
 def make_tileset():

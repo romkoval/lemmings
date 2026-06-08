@@ -57,13 +57,6 @@ func _tile_for_step(n: int) -> Vector2i:
 	return Vector2i(_start_tile.x + n * _start_dir, _start_tile.y - n)
 
 
-# Bridge cell directly below step N. It shares its top edge with step N and its
-# trailing edge with step N-1, so the diagonal corner gap between consecutive
-# steps is filled and the staircase is a run of rectangular blocks touching
-# edge-to-edge (the cell the player marked in red). None below step 0 — that one
-# rests on the ground.
-func _fill_for_step(n: int) -> Vector2i:
-	return _tile_for_step(n) + Vector2i(0, 1)
 
 
 func tick(lemming: Lemming) -> void:
@@ -88,12 +81,10 @@ func tick(lemming: Lemming) -> void:
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	var tile: Vector2i = _tile_for_step(steps_placed)
+	# One separate rectangular plank per step — no fill cells.
 	if not level.add_terrain_at(tile, 0, plank_atlas()):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	# Bridge the corner gap to the step below so blocks meet edge-to-edge.
-	if steps_placed > 0:
-		level.add_terrain_at(_fill_for_step(steps_placed), 0, plank_atlas())
 	_from = lemming.global_position
 	_to = Vector2(
 		tile.x * Level.TILE_SIZE,
