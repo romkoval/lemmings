@@ -1,9 +1,13 @@
 class_name DiggerSkill
 extends BaseSkill
 
-const TICKS_PER_DIG: int = 6
+# Descend speed while digging straight down, in pixels per physics tick. 0.5px
+# ≈ 30 px/s — half the 60 px/s walk speed, so a 16px block takes ~0.5s. The
+# lemming sinks gradually through each block instead of whole tiles vanishing in
+# an instant cascade.
+const DIG_SPEED: float = 0.5
 
-var tick_counter: int = 0
+var _last_cleared: Vector2i = Vector2i(2147483647, 2147483647)
 
 
 func get_skill_name() -> String:
@@ -15,28 +19,29 @@ func can_apply(lemming: Lemming) -> bool:
 
 
 func apply(lemming: Lemming) -> void:
-	tick_counter = 0
+	_last_cleared = Vector2i(2147483647, 2147483647)
 	lemming.change_state(Lemming.State.DIGGING)
 
 
 func tick(lemming: Lemming) -> void:
-	tick_counter += 1
-	if tick_counter < TICKS_PER_DIG:
-		return
-	tick_counter = 0
 	var level: Level = _get_level(lemming)
 	if level == null:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	# Probe the tile the feet rest on. The body settles ~1px above the floor, so
-	# feet (origin + 16) can read as the empty cell *above* the floor — sample a
-	# couple px lower (centre-x) to reliably hit the floor tile beneath.
-	var target: Vector2i = level.world_to_tile(lemming.global_position + Vector2(8, 18))
-	if level.is_steel_at(target):
+	# Tile under the feet (body settles ~1px high, so probe +18 to hit the floor).
+	var tile: Vector2i = level.world_to_tile(lemming.global_position + Vector2(8, 18))
+	if level.is_steel_at(tile):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	if not level.remove_terrain_at(target):
-		lemming.change_state(Lemming.State.WALKING)
+	if level.is_terrain_at(tile):
+		# Reached a fresh block — carve it once, then keep sinking through it.
+		if tile != _last_cleared:
+			level.remove_terrain_at(tile)
+			_last_cleared = tile
+	elif not level.is_solid_at(tile + Vector2i(0, 1)):
+		# Current cell empty and nothing solid right below — broke through into
+		# open space, so start falling.
+		lemming.change_state(Lemming.State.FALLING)
 		return
-	# Drop a full tile onto the freshly cleared cell so the next probe lines up.
-	lemming.global_position.y = target.y * Level.TILE_SIZE
+	# Sink gradually.
+	lemming.global_position.y += DIG_SPEED

@@ -681,34 +681,32 @@ def _draw_ramp(im, x0, y0, dirn):
             p[x0 + x, y0 + sy + 4] = STONE
 
 
-def _draw_plank_ramp(im, x0, y0, dirn):
-    """Builder step: a THIN wooden plank running along the 45° diagonal of the
-    cell (like the original game's builder bridge), transparent below. 'R' rises
-    to the right, 'L' to the left. Collision is the matching ramp triangle (see
-    main_tileset.tres), so a lemming walks the diagonal smoothly and the bridge
-    reads as a thin lapped-plank line, not a thick block. A lap notch splits each
-    cell into two short boards (two planks per square)."""
+def _draw_plank(im, x0, y0):
+    """Builder step: a thin HORIZONTAL wooden board at the top of the 16×16 cell,
+    transparent below. The builder lays one per tread cell plus one in the cell
+    below (fill), so the staircase reads as a run of horizontal wooden blocks
+    stepping up — like the original game — not a thick block or a slanted bar.
+    Collision is the full cell (see main_tileset.tres)."""
     p = im.load()
-    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top edge of the plank
+    WOOD_L  = (0xd8, 0xa8, 0x66, 255)   # lit top surface
     WOOD    = (0xb0, 0x7c, 0x3c, 255)   # board face
-    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain / underside
-    WOOD_DD = (0x52, 0x33, 0x14, 255)   # shadow / lap seam
-    THICK = 4
+    WOOD_D  = (0x84, 0x56, 0x24, 255)   # grain
+    WOOD_DD = (0x52, 0x33, 0x14, 255)   # bottom shadow / board ends
+    H = 7
     for x in range(16):
-        sy = (15 - x) if dirn == "R" else x      # plank top row in this column
-        for k in range(THICK):
-            y = sy + k
-            if 0 <= y < 16:
-                if k == 0:
-                    c = WOOD_L                    # lit walking surface
-                elif k == THICK - 1:
-                    c = WOOD_D                     # shaded underside
-                else:
-                    c = WOOD
-                # Lap seam: a dark notch mid-cell splits it into two boards.
-                if x == 8:
-                    c = WOOD_DD
-                p[x0 + x, y0 + y] = c
+        for y in range(H):
+            if y == 0:
+                c = WOOD_L
+            elif y == H - 1:
+                c = WOOD_DD
+            elif (x + y) % 5 == 0:
+                c = WOOD_D
+            else:
+                c = WOOD
+            p[x0 + x, y0 + y] = c
+    for y in range(H):                  # darker board ends
+        p[x0 + 0, y0 + y] = WOOD_DD
+        p[x0 + 15, y0 + y] = WOOD_DD
 
 
 def make_tileset():
@@ -726,12 +724,10 @@ def make_tileset():
     _draw_steel(im, 80, variant="plate")
     _draw_steel(im, 96, variant="rivet")
     _draw_steel(im, 112, variant="warning")
-    # Ramps (row 1, cols 0..1) + builder planks (row 1, col 2 = rise-right,
-    # col 3 = rise-left)
+    # Ramps (row 1, cols 0..1) + builder plank (row 1, col 2)
     _draw_ramp(im, 0, 16, "R")
     _draw_ramp(im, 16, 16, "L")
-    _draw_plank_ramp(im, 32, 16, "R")
-    _draw_plank_ramp(im, 48, 16, "L")
+    _draw_plank(im, 32, 16)
     return im
 
 

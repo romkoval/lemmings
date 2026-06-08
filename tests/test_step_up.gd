@@ -91,15 +91,14 @@ func test_builder_lays_diagonal_bricks() -> void:
 	var has_brick: bool = _level.terrain_layer.get_cell_source_id(Vector2i(6, 28)) != -1
 	assert_true(has_brick, "plank should be placed at (6, 28)")
 	assert_eq(skill.steps_placed, 1)
-	# Lemming finished climbing to the top corner of the ramp (one row up, at the
-	# junction with the next plank = the right edge for a rightward build).
+	# Lemming finished stepping one tile up + one tile forward onto the tread.
 	assert_eq(int(_lemming.global_position.y), 28 * Level.TILE_SIZE - Level.TILE_SIZE)
-	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE + Level.TILE_SIZE)
+	assert_eq(int(_lemming.global_position.x), 6 * Level.TILE_SIZE)
 
 
-func test_builder_lays_thin_diagonal_planks() -> void:
-	# Each step lays ONE thin diagonal plank (ramp tile) — no thick fill cell —
-	# stepping up the 45° line, using the rise-right atlas tile.
+func test_builder_lays_horizontal_blocks() -> void:
+	# Each step lays one horizontal wooden plank stepping up the 45° line, so the
+	# staircase reads as a run of horizontal blocks.
 	_lemming.global_position = Vector2(80, 448)
 	_lemming.direction = 1
 	_place_terrain(Vector2i(5, 29))
@@ -109,20 +108,24 @@ func test_builder_lays_thin_diagonal_planks() -> void:
 		skill.tick(_lemming)
 	var layer := _level.terrain_layer
 	# Step 0 at (6,28), step 1 at (7,27) — one cell up + one over each.
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS_R, "step 0 plank")
-	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS_R, "step 1 plank")
-	# No thick fill cell below the tread (the bridge stays thin).
-	assert_eq(layer.get_cell_source_id(Vector2i(6, 29)), -1, "no fill cell below step 0")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(6, 28)), BuilderSkill.PLANK_ATLAS, "step 0 plank")
+	assert_eq(layer.get_cell_atlas_coords(Vector2i(7, 27)), BuilderSkill.PLANK_ATLAS, "step 1 plank")
 
 
-func test_builder_uses_left_plank_when_facing_left() -> void:
+func test_digger_sinks_gradually() -> void:
+	# The digger sinks a few px per tick and carves one block at a time, so blocks
+	# don't vanish in an instant cascade.
 	_lemming.global_position = Vector2(80, 448)
-	_lemming.direction = -1
 	_place_terrain(Vector2i(5, 29))
-	var skill: BuilderSkill = BuilderSkill.new()
+	_place_terrain(Vector2i(5, 30))
+	_place_terrain(Vector2i(5, 31))
+	var skill: DiggerSkill = DiggerSkill.new()
 	skill.apply(_lemming)
-	for i in range(BuilderSkill.TICKS_PER_STEP + 1):
+	var y0: float = _lemming.global_position.y
+	for i in range(4):
 		skill.tick(_lemming)
-	# Facing left → rise-left atlas tile at the start cell.
-	assert_eq(skill._start_tile, Vector2i(5, 28))
-	assert_eq(_level.terrain_layer.get_cell_atlas_coords(Vector2i(5, 28)), BuilderSkill.PLANK_ATLAS_L)
+	# Sank only ~4 ticks worth (a couple px), not a whole tile.
+	assert_almost_eq(_lemming.global_position.y - y0, 4.0 * DiggerSkill.DIG_SPEED, 0.01)
+	# Only the first block is carved; the ones below are still intact.
+	assert_eq(_level.terrain_layer.get_cell_source_id(Vector2i(5, 29)), -1, "top block carved")
+	assert_ne(_level.terrain_layer.get_cell_source_id(Vector2i(5, 30)), -1, "block below still intact")
