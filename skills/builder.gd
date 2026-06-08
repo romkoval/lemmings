@@ -70,14 +70,15 @@ func _square_target(m: int) -> Vector2:
 	return Vector2(t.x * Level.TILE_SIZE, t.y * Level.TILE_SIZE - Level.TILE_SIZE)
 
 
-# Top-left pixel position of plank k (0-based). Two planks fill one cell: the
-# lower one (even k) the bottom half, the upper one (odd k) the top half, 8px
-# higher and overlapping.
+# Top-left pixel position of plank k (0-based). Each plank is OFFSET from the last
+# by half a cell up + half a cell in the build direction (8px, 8px), so the run
+# reads as overlapping stair steps rather than a stack of squares. Two planks span
+# one 16×16 cell of rise/run, matching the collision square stamped every 2 planks.
 func _plank_pos(k: int) -> Vector2:
-	var m: int = k / 2
-	var t: Vector2i = _tile_for_step(m)
-	var y_off: int = PLANK_H if (k % 2 == 0) else 0   # lower half, then top half
-	return Vector2(t.x * Level.TILE_SIZE, t.y * Level.TILE_SIZE + y_off)
+	return Vector2(
+		_start_tile.x * Level.TILE_SIZE + k * (PLANK_H * _start_dir),
+		_start_tile.y * Level.TILE_SIZE - k * PLANK_H
+	)
 
 
 func _spawn_plank(level: Level, k: int) -> void:
