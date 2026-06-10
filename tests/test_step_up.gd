@@ -148,6 +148,31 @@ func test_walker_unburies_when_terrain_stamped_on_it() -> void:
 	GameManager.set_state(GameManager.GameState.MENU)
 
 
+func test_drilling_staircase_removes_plank_sprites() -> void:
+	# Regression: plank sprites are decoupled from the collision tilemap. When a
+	# built square is dug/bashed away, its planks must vanish with the tile —
+	# otherwise the bridge stays visible but loses collision and lemmings fall
+	# straight through it.
+	_lemming.global_position = Vector2(80, 448)
+	_lemming.direction = 1
+	_place_terrain(Vector2i(5, 29))
+	var skill: BuilderSkill = BuilderSkill.new()
+	skill.apply(_lemming)
+	# Lay a few squares of staircase.
+	for i in range(BuilderSkill.TICKS_PER_PLANK * 4 + 8):
+		skill.tick(_lemming)
+	assert_gt(_plank_sprite_count(), 0, "staircase has plank sprites")
+	# Square 0's collision cell is (6, 28); it carries 2 plank sprites.
+	var before: int = _plank_sprite_count()
+	assert_true(_level.is_solid_at(Vector2i(6, 28)), "square 0 is solid before drilling")
+	# Drill a hole through square 0 (what a digger/basher does).
+	var removed: bool = _level.remove_terrain_at(Vector2i(6, 28))
+	await get_tree().process_frame   # let queue_free() take effect
+	assert_true(removed, "tile removed")
+	assert_false(_level.is_solid_at(Vector2i(6, 28)), "collision gone")
+	assert_eq(_plank_sprite_count(), before - 2, "both planks of the drilled square removed")
+
+
 func test_digger_sinks_gradually() -> void:
 	# The digger sinks a few px per tick and carves one block at a time, so blocks
 	# don't vanish in an instant cascade.

@@ -55,7 +55,31 @@ func remove_terrain_at(tile_coord: Vector2i) -> bool:
 	if terrain_layer.get_cell_source_id(tile_coord) == -1:
 		return false
 	terrain_layer.erase_cell(tile_coord)
+	_clear_terrain_decor(tile_coord)
 	return true
+
+
+# Visual overlays (e.g. the builder's wooden plank sprites) are decoupled from
+# the collision tilemap, so they must be freed together with the tile they
+# belong to — otherwise a dug/bashed staircase stays visible but loses its
+# collision, and lemmings walk straight through it.
+var _terrain_decor: Dictionary = {}   # Vector2i -> Array[Node2D]
+
+
+func register_terrain_decoration(tile_coord: Vector2i, node: Node2D) -> void:
+	add_child(node)
+	var arr: Array = _terrain_decor.get(tile_coord, [])
+	arr.append(node)
+	_terrain_decor[tile_coord] = arr
+
+
+func _clear_terrain_decor(tile_coord: Vector2i) -> void:
+	if not _terrain_decor.has(tile_coord):
+		return
+	for n in _terrain_decor[tile_coord]:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_terrain_decor.erase(tile_coord)
 
 
 func add_terrain_at(tile_coord: Vector2i, source_id: int = DIRT_SOURCE, atlas: Vector2i = Vector2i.ZERO) -> bool:

@@ -170,6 +170,10 @@ func _process_falling(delta: float) -> void:
 	if is_floater:
 		change_state(State.FLOATING)
 		return
+	# A faller can end up wedged inside terrain — e.g. it dropped into a double
+	# staircase, or a builder stamped a tile around it. Pop it onto the surface so
+	# it lands instead of vibrating inside the tiles forever.
+	_unembed_from_terrain()
 	velocity.y = GRAVITY * 2.0
 	velocity.x = 0
 	move_and_slide()
@@ -207,6 +211,8 @@ func _process_blocking(_delta: float) -> void:
 	# it is dug away it should fall, not hang in the air. Stick lightly to the
 	# floor (so floor-snap keeps it put on slopes) and drop to FALLING the moment
 	# there's nothing under it.
+	# A blocker buried by terrain built/altered around it must also climb out.
+	_unembed_from_terrain()
 	velocity.x = 0.0
 	velocity.y = GROUND_STICK
 	move_and_slide()

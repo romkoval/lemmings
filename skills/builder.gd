@@ -90,7 +90,11 @@ func _spawn_plank(level: Level, k: int) -> void:
 	spr.flip_h = _start_dir < 0
 	spr.position = _plank_pos(k)
 	spr.z_index = 1                                   # above the terrain layer
-	level.add_child(spr)
+	# Tie the plank to the collision cell of its square (two planks per square) so
+	# that when the staircase is dug/bashed away, the visible plank is removed with
+	# the tile — otherwise the bridge stays visible but loses collision and
+	# lemmings walk through it and fall.
+	level.register_terrain_decoration(_tile_for_step(k / 2), spr)
 
 
 func tick(lemming: Lemming) -> void:
