@@ -28,11 +28,19 @@ func _run() -> void:
 			if parts.size() == 2:
 				focus = Vector2(float(parts[0]), float(parts[1]))
 	var assign := ""   # "skill,x,y,frame" — assign a skill mid-run (e.g. builder)
+	var scene := ""    # arbitrary scene instead of the game (e.g. the editor)
 	for a in all_args:
 		if a.begins_with("--assign="):
 			assign = a.substr("--assign=".length())
-	var game: Node = (load("res://scenes/game/game.tscn") as PackedScene).instantiate()
-	game.set("initial_level_path", "res://levels/%s.tscn" % level)
+		elif a.begins_with("--scene="):
+			scene = a.substr("--scene=".length())
+	var game: Node
+	if scene != "":
+		game = (load(scene) as PackedScene).instantiate()
+	else:
+		game = (load("res://scenes/game/game.tscn") as PackedScene).instantiate()
+		var lp: String = level if level.begins_with("user://") else "res://levels/%s.tscn" % level
+		game.set("initial_level_path", lp)
 	root.add_child(game)
 	var ap := assign.split(",")
 	for f in range(frames):

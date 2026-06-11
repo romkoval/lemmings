@@ -92,6 +92,16 @@ func _apply_data(d: Dictionary) -> void:
 	if d.get("add_depth", false):
 		_add_depth()
 
+	# Hand-painted cells (the in-game level editor saves these): plain [x, y]
+	# pairs, or [x, y, atlas_x, atlas_y] to place ramp tiles.
+	for cell in d.get("terrain_tiles", []):
+		if cell is Array and cell.size() >= 2:
+			var ct := Vector2i(int(cell[0]), int(cell[1]))
+			var atlas: Vector2i = DIRT_ATLAS
+			if cell.size() >= 4:
+				atlas = Vector2i(int(cell[2]), int(cell[3]))
+			terrain_layer.set_cell(ct, DIRT_SOURCE, atlas)
+
 	for cell in d.get("steel", []):
 		if cell is Array and cell.size() == 2:
 			var c2 := Vector2i(int(cell[0]), int(cell[1]))

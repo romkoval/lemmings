@@ -13,6 +13,7 @@ const LEMMING_SCALE: float = 4.0
 @onready var buttons: VBoxContainer = $Buttons
 @onready var play_button: Button = $Buttons/PlayButton
 @onready var level_select_button: Button = $Buttons/LevelSelectButton
+@onready var editor_button: Button = $Buttons/EditorButton
 @onready var settings_button: Button = $Buttons/SettingsButton
 @onready var quit_button: Button = $Buttons/QuitButton
 @onready var mute_button: Button = $MuteButton
@@ -26,6 +27,7 @@ var _ground_y: float = 0.0
 func _ready() -> void:
 	play_button.pressed.connect(_on_play)
 	level_select_button.pressed.connect(_on_select)
+	editor_button.pressed.connect(_on_editor)
 	settings_button.pressed.connect(_on_settings)
 	quit_button.pressed.connect(_on_quit)
 	mute_button.pressed.connect(_on_mute)
@@ -106,6 +108,7 @@ func _style_buttons() -> void:
 	var accents := {
 		play_button: Color(0.3, 0.78, 0.4),
 		level_select_button: Color(0.32, 0.6, 1.0),
+		editor_button: Color(0.95, 0.72, 0.25),
 		settings_button: Color(0.7, 0.55, 1.0),
 		quit_button: Color(0.9, 0.4, 0.4),
 	}
@@ -149,6 +152,10 @@ func _on_play() -> void:
 
 func _on_select() -> void:
 	get_tree().change_scene_to_file("res://scenes/menu/level_select.tscn")
+
+
+func _on_editor() -> void:
+	get_tree().change_scene_to_file("res://scenes/menu/custom_levels.tscn")
 
 
 func _on_settings() -> void:
