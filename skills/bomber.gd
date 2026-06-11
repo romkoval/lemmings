@@ -1,7 +1,7 @@
 class_name BomberSkill
 extends BaseSkill
 
-const EXPLOSION_RADIUS_TILES: int = 2
+const EXPLOSION_RADIUS_PX: float = 24.0
 
 
 func get_skill_name() -> String:
@@ -20,9 +20,5 @@ func detonate(lemming: Lemming) -> void:
 	var level: Level = _get_level(lemming)
 	if level == null:
 		return
-	var center: Vector2i = level.world_to_tile(lemming.global_position)
-	for dy in range(-EXPLOSION_RADIUS_TILES, EXPLOSION_RADIUS_TILES + 1):
-		for dx in range(-EXPLOSION_RADIUS_TILES, EXPLOSION_RADIUS_TILES + 1):
-			if dx * dx + dy * dy > EXPLOSION_RADIUS_TILES * EXPLOSION_RADIUS_TILES:
-				continue
-			level.remove_terrain_at(center + Vector2i(dx, dy))
+	# Round crater centred on the body; steel survives the blast.
+	level.carve_circle_px(lemming.global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)

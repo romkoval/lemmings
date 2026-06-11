@@ -1,7 +1,13 @@
 class_name MinerSkill
 extends BaseSkill
 
-const TICKS_PER_DIG: int = 8
+# Mines a diagonal tunnel down-forward: each swing carves a body-sized pocket
+# ahead and slightly below, then the miner steps 4px forward and 4px down into
+# it, descending at 45°/2 like the original.
+
+const TICKS_PER_SWING: int = 8
+const POCKET_W: int = 16
+const POCKET_H: int = 17
 
 var tick_counter: int = 0
 
@@ -21,18 +27,24 @@ func apply(lemming: Lemming) -> void:
 
 func tick(lemming: Lemming) -> void:
 	tick_counter += 1
-	if tick_counter < TICKS_PER_DIG:
+	if tick_counter < TICKS_PER_SWING:
 		return
 	tick_counter = 0
 	var level: Level = _get_level(lemming)
 	if level == null:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	var target: Vector2i = level.world_to_tile(lemming.global_position + Vector2(lemming.direction * 8, 16))
-	if level.is_steel_at(target):
+	var fx: int = lemming.feet_x()
+	var fy: int = lemming.feet_y()
+	# Pocket ahead of the body, dipping 4px below the feet — the space the next
+	# step descends into.
+	var x0: int = fx + 1 if lemming.direction > 0 else fx - 1 - POCKET_W
+	var pocket := Rect2i(x0, fy - (POCKET_H - 5), POCKET_W, POCKET_H)
+	if level.rect_has_steel_px(pocket):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	if not level.remove_terrain_at(target):
+	var carved: int = level.carve_rect_px(pocket)
+	if carved == 0:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	lemming.global_position += Vector2(lemming.direction * 4, 4)
+	lemming.global_position += Vector2(lemming.direction * 4.0, 4.0)

@@ -43,7 +43,7 @@ func test_does_not_block_when_behind() -> void:
 	assert_false(_walker._is_blocker_at_front())
 
 
-# ── Walkers turn around at a builder met head-on ───────────────────────────
+# ── Walkers turn around at a builder ahead ──────────────────────────────────
 
 func test_walker_turns_at_head_on_builder() -> void:
 	# Builder right in front, facing back toward the walker → turn.
@@ -52,18 +52,19 @@ func test_walker_turns_at_head_on_builder() -> void:
 	_blocker.global_position = Vector2(120, 400)
 	_walker.direction = 1
 	_walker.global_position = Vector2(112, 400)
-	assert_true(_walker._is_head_on_builder_at_front())
+	assert_true(_walker._is_builder_at_front())
 
 
-func test_follower_not_turned_by_builder() -> void:
-	# Builder in front but facing the SAME way (a follower coming up behind it)
-	# → not turned, so it can climb the staircase.
+func test_follower_turns_at_builder_too() -> void:
+	# A follower coming up behind the builder bumps into it and turns as well —
+	# otherwise it overtakes onto the unfinished staircase end and drops off.
+	# It paces behind and climbs once the staircase is complete.
 	_blocker.change_state(Lemming.State.BUILDING)
 	_blocker.direction = 1
 	_blocker.global_position = Vector2(120, 400)
 	_walker.direction = 1
 	_walker.global_position = Vector2(112, 400)
-	assert_false(_walker._is_head_on_builder_at_front())
+	assert_true(_walker._is_builder_at_front())
 
 
 func test_builder_on_other_level_does_not_turn() -> void:
@@ -73,4 +74,4 @@ func test_builder_on_other_level_does_not_turn() -> void:
 	_blocker.global_position = Vector2(120, 384)
 	_walker.direction = 1
 	_walker.global_position = Vector2(112, 400)
-	assert_false(_walker._is_head_on_builder_at_front())
+	assert_false(_walker._is_builder_at_front())

@@ -11,7 +11,7 @@
 - **Managers:** GameManager, LevelManager, SaveManager, AudioManager — all Autoload
 - **Lemming FSM:** Finite State Machine per lemming (WALKING, FALLING, SKILL_ACTIVE, etc.)
 - **Skills:** Strategy pattern — each skill is a separate class extending BaseSkill
-- **Landscape:** TileMap with collision layers. Skills modify tiles via set_cell()
+- **Landscape:** per-pixel terrain (`PixelTerrain`), like the original game. Tile layers are only the AUTHORING format: at level load they are rasterized into a 1px solidity mask + material map (dirt/wood/steel), then hidden. Skills carve/fill pixels (`Level.carve_rect_px` / `fill_rect_px`); the visible terrain is drawn by `assets/shaders/pixel_terrain.gdshader` straight from the same mask, so physics and visuals can never disagree
 - **UI:** HUD scene with skill panel, counters, timer. Touch-first design.
 
 ## Key Conventions
@@ -22,7 +22,7 @@
 - File names match class names: `game_manager.gd` → `GameManager`
 - Assets under `res://assets/`, organized by type
 - Levels stored as Godot `.tscn` scenes with metadata in companion `.json` files
-- TileMap cell size: 16×16 pixels (matching original game's sprite resolution)
+- TileMap cell size: 16×16 pixels — authoring/procgen granularity only; runtime collision is per-pixel
 
 ## Test Framework
 - **GUT (Godot Unit Test):** `res://addons/gut/`
@@ -47,9 +47,12 @@ res://
 ```
 
 ## Lemming Physics
+- Movement is classic pixel physics (no move_and_slide/raycasts against terrain;
+  the body probes the pixel mask at its centre column)
 - Walk speed: 1 pixel per frame at 60fps = 60 px/sec
-- Fall threshold: 64 pixels (configurable) — falls > threshold = splat
-- Gravity: 2 px/frame²
+- Step-up ≤ 8px in stride (builder planks are 8px); taller = wall → turn/climb
+- Step-down ≤ 8px in stride; deeper = FALLING
+- Fall speed: 2 px/frame (120 px/sec); falls > 64px = splat
 - Climb speed: 30 px/sec
 
 ## Git Workflow

@@ -1,28 +1,23 @@
 class_name BuilderSkill
 extends BaseSkill
 
-# Builder lays a diagonal bridge as a run of separate wooden PLANKS. Each plank is
-# a 16×8 rectangle (Sprite2D overlay) laid one at a time: the next plank sits 8px
-# higher and overlaps the last, so a full 16×16 cell of structure is built from
-# TWO planks — i.e. one square per two movements. The walk collision is a
-# transparent full-cell tile stamped once per finished square (every 2nd plank),
-# so the geometry lemmings climb is unchanged while the visible bridge is the
-# overlapping planks.
-const MAX_STEPS: int = 12               # full 16×16 squares of reach
-const MAX_PLANKS: int = MAX_STEPS * 2   # two planks per square
-const TICKS_PER_PLANK: int = 22         # climb + brief hold per plank (deliberate pace)
-const CLIMB_TICKS: int = 14
-const PLANK_H: int = 8                  # half a cell
-# Transparent collision tiles (full-cell polygon) under the visible plank sprites.
-const PLANK_ATLAS_R: Vector2i = Vector2i(2, 1)
-const PLANK_ATLAS_L: Vector2i = Vector2i(3, 1)
-const PLANK_TEX: Texture2D = preload("res://assets/sprites/plank.png")
+# Lays a staircase of wooden planks directly INTO the pixel terrain: each plank
+# is a 16×8 block of wood pixels, offset half a plank up and forward from the
+# last, so a full body-height of rise takes two planks. Because planks are
+# terrain pixels, they are walkable, drillable and bashable exactly like ground
+# — visuals and collision are the same data by construction, so a "drilled but
+# visible" or "visible but intangible" staircase cannot exist.
 
-var steps_placed: int = 0               # finished 16×16 squares (collision cells)
-var planks_laid: int = 0                # individual plank rectangles laid
-var _start_tile: Vector2i = Vector2i.ZERO
-var _start_dir: int = 1
-var _start_pos: Vector2 = Vector2.ZERO  # lemming origin when building began
+const MAX_PLANKS: int = 24              # 12 squares of reach, two planks each
+const TICKS_PER_PLANK: int = 22         # climb + brief hold per plank
+const CLIMB_TICKS: int = 14
+const PLANK_W: int = 16
+const PLANK_H: int = 8
+
+var planks_laid: int = 0
+var _dir: int = 1
+var _base: Vector2i = Vector2i.ZERO     # top-left px of plank 0
+var _feet0: Vector2i = Vector2i.ZERO    # feet px where building began
 var _moving: bool = false
 var _move_t: int = 0
 var _from: Vector2 = Vector2.ZERO
@@ -38,63 +33,25 @@ func can_apply(lemming: Lemming) -> bool:
 
 
 func apply(lemming: Lemming) -> void:
-	steps_placed = 0
 	planks_laid = 0
 	_moving = false
 	_move_t = 0
-	_start_dir = lemming.direction
-	_start_pos = lemming.global_position
-	var level: Level = _get_level(lemming)
-	if level != null:
-		# Floor tile under the leading foot, one row up = the cell the first square
-		# of structure fills. Probe +18 (not +16): the body settles ~1px high, so
-		# feet+16 would read the empty cell above and start a tile too high.
-		var feet_world: Vector2 = lemming.global_position + Vector2(8 + _start_dir * 8, 18)
-		var floor_tile: Vector2i = level.world_to_tile(feet_world)
-		_start_tile = floor_tile + Vector2i(0, -1)
+	_dir = lemming.direction
+	_feet0 = Vector2i(lemming.feet_x(), lemming.feet_y())
+	# Plank 0 rests on the floor at the feet, extending in the build direction —
+	# the staircase starts at ground level.
+	_base = Vector2i(_feet0.x if _dir > 0 else _feet0.x - PLANK_W, _feet0.y - PLANK_H)
 	lemming.change_state(Lemming.State.BUILDING)
 
 
-func plank_atlas() -> Vector2i:
-	return PLANK_ATLAS_R if _start_dir > 0 else PLANK_ATLAS_L
+# Top-left px of plank k: half a plank forward and half a plank up per step.
+func plank_rect(k: int) -> Rect2i:
+	return Rect2i(_base.x + k * PLANK_H * _dir, _base.y - k * PLANK_H, PLANK_W, PLANK_H)
 
 
-# Collision cell for the Nth finished square — 45° staircase, one cell up + over.
-func _tile_for_step(n: int) -> Vector2i:
-	return Vector2i(_start_tile.x + n * _start_dir, _start_tile.y - n)
-
-
-# Lemming standing position once square m is finished (feet on top of cell m).
-func _square_target(m: int) -> Vector2:
-	var t: Vector2i = _tile_for_step(m)
-	return Vector2(t.x * Level.TILE_SIZE, t.y * Level.TILE_SIZE - Level.TILE_SIZE)
-
-
-# Top-left pixel position of plank k (0-based). Each plank is OFFSET from the last
-# by half a cell up + half a cell in the build direction (8px, 8px), so the run
-# reads as overlapping stair steps rather than a stack of squares. The +PLANK_H
-# vertical bias drops plank 0 onto the floor (the staircase starts at the bottom,
-# not a tile up) and centres the plank band on the 45° ramp collision surface so
-# lemmings walk along the top of the steps instead of sinking into them.
-func _plank_pos(k: int) -> Vector2:
-	return Vector2(
-		_start_tile.x * Level.TILE_SIZE + k * PLANK_H * _start_dir,
-		_start_tile.y * Level.TILE_SIZE + PLANK_H - k * PLANK_H
-	)
-
-
-func _spawn_plank(level: Level, k: int) -> void:
-	var spr := Sprite2D.new()
-	spr.texture = PLANK_TEX
-	spr.centered = false
-	spr.flip_h = _start_dir < 0
-	spr.position = _plank_pos(k)
-	spr.z_index = 1                                   # above the terrain layer
-	# Tie the plank to the collision cell of its square (two planks per square) so
-	# that when the staircase is dug/bashed away, the visible plank is removed with
-	# the tile — otherwise the bridge stays visible but loses collision and
-	# lemmings walk through it and fall.
-	level.register_terrain_decoration(_tile_for_step(k / 2), spr)
+# Where the feet stand once plank k is laid: centred on it, on its top surface.
+func _feet_target(k: int) -> Vector2i:
+	return Vector2i(_feet0.x + _dir * PLANK_H * (k + 1), _feet0.y - PLANK_H * (k + 1))
 
 
 func tick(lemming: Lemming) -> void:
@@ -117,26 +74,16 @@ func tick(lemming: Lemming) -> void:
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	var k: int = planks_laid
-	var m: int = k / 2
-	if k % 2 == 0:
-		# Lower plank = start of a new square. Stamp the collision cell NOW (not on
-		# the second plank) so followers climbing right behind always have the next
-		# step to land on instead of walking off the edge into the gap.
-		if level.is_solid_at(_tile_for_step(m)):
-			lemming.change_state(Lemming.State.WALKING)
-			return
-		_spawn_plank(level, k)
-		level.add_terrain_at(_tile_for_step(m), Level.DIRT_SOURCE, plank_atlas())
-		steps_placed += 1
-	else:
-		# Upper plank = purely visual, fills the top half of the square.
-		_spawn_plank(level, k)
-	# Move the lemming half a square per plank: even k climbs to the midpoint of
-	# square m, odd k finishes square m.
-	var prev_target: Vector2 = _square_target(m - 1) if m > 0 else _start_pos
-	var sq_target: Vector2 = _square_target(m)
+	var land: Vector2i = _feet_target(k)
+	# Blocked: standing room on the new plank is already occupied by terrain
+	# (bridge ran into a wall/ceiling) — stop and walk.
+	if level.is_solid_px(Vector2(land.x + 0.5, land.y - 3.5)) \
+			or level.is_solid_px(Vector2(land.x + 0.5, land.y - 11.5)):
+		lemming.change_state(Lemming.State.WALKING)
+		return
+	level.fill_rect_px(plank_rect(k), PixelTerrain.MAT_WOOD)
 	_from = lemming.global_position
-	_to = prev_target.lerp(sq_target, 0.5) if (k % 2 == 0) else sq_target
+	_to = Vector2(float(land.x - 8), float(land.y - 16))
 	_moving = true
 	_move_t = 0
 	planks_laid += 1

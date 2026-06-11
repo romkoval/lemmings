@@ -59,21 +59,21 @@ func _fit_size() -> void:
 
 
 func _build_thumbnail() -> void:
-	var terrain = _level.get("terrain_layer")
-	var steel = _level.get("steel_layer")
-	var ts: int = int(_level.get("TILE_SIZE")) if _level.get("TILE_SIZE") != null else 16
-	var origin: Vector2i = Vector2i(int(_bounds.position.x) / ts, int(_bounds.position.y) / ts)
-	var tiles: Vector2i = Vector2i(int(_bounds.size.x) / ts, int(_bounds.size.y) / ts)
-	tiles.x = maxi(1, tiles.x)
-	tiles.y = maxi(1, tiles.y)
-	var img := Image.create(tiles.x, tiles.y, false, Image.FORMAT_RGBA8)
+	# Sample the pixel terrain on an 8px grid — twice the detail the old
+	# tile-based silhouette had, cheap enough to build once per level.
+	const STEP: int = 8
+	var cols: int = maxi(1, int(_bounds.size.x) / STEP)
+	var rows: int = maxi(1, int(_bounds.size.y) / STEP)
+	var img := Image.create(cols, rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	for ty in range(tiles.y):
-		for tx in range(tiles.x):
-			var cell := Vector2i(origin.x + tx, origin.y + ty)
-			if steel != null and steel.get_cell_source_id(cell) != -1:
+	for ty in range(rows):
+		for tx in range(cols):
+			var wp := Vector2(
+				_bounds.position.x + (tx + 0.5) * STEP,
+				_bounds.position.y + (ty + 0.5) * STEP)
+			if _level.has_method("is_steel_px") and _level.is_steel_px(wp):
 				img.set_pixel(tx, ty, STEEL_COL)
-			elif terrain != null and terrain.get_cell_source_id(cell) != -1:
+			elif _level.has_method("is_solid_px") and _level.is_solid_px(wp):
 				img.set_pixel(tx, ty, DIRT_COL)
 	_thumb = ImageTexture.create_from_image(img)
 
