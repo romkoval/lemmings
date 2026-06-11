@@ -74,19 +74,52 @@ func test_delete_only_touches_custom_dir() -> void:
 	assert_true(FileAccess.file_exists("res://levels/fun/level_01.json"), "campaign files untouchable")
 
 
-func test_editor_scene_collects_painted_data() -> void:
+func test_editor_paints_pixels_and_round_trips_through_game() -> void:
+	# The editor paints pixel brushes into a live PixelTerrain (WYSIWYG with the
+	# game) and saves mask/material PNGs; the saved level must load back with
+	# the same pixels solid — including steel — and the same parameters.
 	var editor = (load("res://scenes/editor/level_editor.tscn") as PackedScene).instantiate()
 	add_child_autoqfree(editor)
 	await wait_physics_frames(1)
-	# Paint a few cells through the tool API.
 	editor.tool = editor.Tool.DIRT
-	editor._apply_tool(Vector2(4 * 16 + 8, 29 * 16 + 8))
+	editor._stroke_at(Vector2(100, 500))
+	editor._stroke_at(Vector2(160, 500))   # dirt band 100..160
 	editor.tool = editor.Tool.STEEL
-	editor._apply_tool(Vector2(6 * 16 + 8, 29 * 16 + 8))
+	editor._last_stroke = Vector2.INF
+	editor._stroke_at(Vector2(300, 500))
 	editor.tool = editor.Tool.EXIT
-	editor._apply_tool(Vector2(20 * 16 + 8, 10 * 16 + 8))
-	var d: Dictionary = editor._collect_data()
-	assert_eq((d["terrain_tiles"] as Array).size(), 1, "one dirt cell")
-	assert_eq((d["steel"] as Array).size(), 1, "one steel cell")
-	assert_eq(d["exit_pos"], [20.0 * 16 + 8, 10.0 * 16 + 8])
-	assert_true(str(d["id"]).begins_with("custom_"), "id generated")
+	editor._stroke_at(Vector2(600, 900))
+	assert_true(editor.terrain.is_solid_px(Vector2(130, 500)), "dirt painted in editor mask")
+	assert_true(editor.terrain.is_steel_px(Vector2(300, 500)), "steel painted in editor mask")
+	# Save and reload through the real game pipeline.
+	editor.level_id = "custom_gut_paint"
+	editor.save_path = "user://custom_levels/custom_gut_paint.json"
+	assert_true(editor._save(false), "saves PNGs + JSON")
+	assert_true(FileAccess.file_exists("user://custom_levels/custom_gut_paint_mask.png"), "mask png written")
+	var base: PackedScene = load("res://levels/custom_base.tscn")
+	var level: Level = base.instantiate() as Level
+	level.set("data_path", "user://custom_levels/custom_gut_paint.json")
+	add_child_autoqfree(level)
+	await wait_physics_frames(2)
+	assert_true(level.is_solid_px(Vector2(130, 500)), "painted dirt solid in game")
+	assert_false(level.is_solid_px(Vector2(130, 460)), "air above the stroke")
+	assert_true(level.is_steel_px(Vector2(300, 500)), "painted steel is steel in game")
+	assert_eq(level.level_exit.position, Vector2(600, 900), "exit where placed")
+	LevelManager.delete_custom_level("user://custom_levels/custom_gut_paint.json")
+	assert_false(FileAccess.file_exists("user://custom_levels/custom_gut_paint_mask.png"),
+		"deleting the level removes its PNGs")
+
+
+func test_editor_eraser_cuts_through_steel() -> void:
+	# Gameplay carving must never remove steel, but the EDITOR's eraser is the
+	# author's tool — it erases anything.
+	var editor = (load("res://scenes/editor/level_editor.tscn") as PackedScene).instantiate()
+	add_child_autoqfree(editor)
+	await wait_physics_frames(1)
+	editor.tool = editor.Tool.STEEL
+	editor._stroke_at(Vector2(200, 400))
+	assert_true(editor.terrain.is_steel_px(Vector2(200, 400)))
+	editor.tool = editor.Tool.ERASE
+	editor._last_stroke = Vector2.INF
+	editor._stroke_at(Vector2(200, 400))
+	assert_false(editor.terrain.is_solid_px(Vector2(200, 400)), "editor eraser removes steel")

@@ -69,6 +69,37 @@ func build_from_tiles(terrain: TileMapLayer, steel: TileMapLayer) -> void:
 		_mask.fill_rect(r, Color.WHITE)
 		_mat.fill_rect(r, Color.WHITE)
 
+	_finalize_build()
+
+
+# Build straight from previously saved mask/material images (the level editor's
+# format — painted in pixel space, so NO smoothing: what was painted is exactly
+# what plays).
+func build_from_images(mask_img: Image, mat_img: Image, origin: Vector2i) -> void:
+	_origin = origin
+	_mask = mask_img
+	if _mask.get_format() != Image.FORMAT_L8:
+		_mask.convert(Image.FORMAT_L8)
+	_size = Vector2i(_mask.get_width(), _mask.get_height())
+	if mat_img != null and mat_img.get_width() == _size.x and mat_img.get_height() == _size.y:
+		_mat = mat_img
+		if _mat.get_format() != Image.FORMAT_L8:
+			_mat.convert(Image.FORMAT_L8)
+	else:
+		_mat = Image.create(_size.x, _size.y, false, Image.FORMAT_L8)
+	_finalize_build()
+
+
+# Copies of the live mask/material for saving (level editor).
+func export_images() -> Dictionary:
+	return {
+		"mask": _mask.duplicate(),
+		"mat": _mat.duplicate(),
+		"origin": _origin,
+	}
+
+
+func _finalize_build() -> void:
 	_mask_tex = ImageTexture.create_from_image(_mask)
 	_mat_tex = ImageTexture.create_from_image(_mat)
 	texture = _mask_tex
@@ -149,7 +180,8 @@ func carve_rect(r: Rect2i) -> int:
 	return carved
 
 
-func carve_circle(center: Vector2, radius: float) -> int:
+# `force` (level editor only) erases steel as well.
+func carve_circle(center: Vector2, radius: float, force: bool = false) -> int:
 	var c := Vector2(center)
 	var r := int(ceilf(radius))
 	var box := Rect2i(Vector2i(floori(c.x) - r, floori(c.y) - r), Vector2i(r * 2 + 1, r * 2 + 1))
@@ -162,23 +194,44 @@ func carve_circle(center: Vector2, radius: float) -> int:
 				continue
 			if _mask.get_pixel(x, y).r < SOLID_EPS:
 				continue
-			if _mat.get_pixel(x, y).r > 0.8:
+			if not force and _mat.get_pixel(x, y).r > 0.8:
 				continue
 			_mask.set_pixel(x, y, Color.BLACK)
+			if force:
+				_mat.set_pixel(x, y, Color.BLACK)
 			carved += 1
 	if carved > 0:
 		_dirty = true
 	return carved
 
 
-# Add solid pixels (builder planks, test fixtures). Never overwrites steel.
-func fill_rect(r: Rect2i, mat: float = MAT_DIRT) -> void:
+# Add solid pixels (builder planks, test fixtures). Never overwrites steel
+# unless `force` (level editor painting over a steel area).
+func fill_rect(r: Rect2i, mat: float = MAT_DIRT, force: bool = false) -> void:
 	var rr := _clip(r)
 	if not rr.has_area():
 		return
 	for y in range(rr.position.y, rr.end.y):
 		for x in range(rr.position.x, rr.end.x):
-			if _mat.get_pixel(x, y).r > 0.8:
+			if not force and _mat.get_pixel(x, y).r > 0.8:
+				continue
+			_mask.set_pixel(x, y, Color.WHITE)
+			_mat.set_pixel(x, y, Color(mat, mat, mat))
+	_dirty = true
+
+
+# Round brush stamp for the level editor.
+func fill_circle(center: Vector2, radius: float, mat: float = MAT_DIRT, force: bool = false) -> void:
+	var c := Vector2(center)
+	var r := int(ceilf(radius))
+	var box := Rect2i(Vector2i(floori(c.x) - r, floori(c.y) - r), Vector2i(r * 2 + 1, r * 2 + 1))
+	var rr := _clip(box)
+	for y in range(rr.position.y, rr.end.y):
+		for x in range(rr.position.x, rr.end.x):
+			var wp := Vector2(float(x + _origin.x) + 0.5, float(y + _origin.y) + 0.5)
+			if wp.distance_to(c) > radius:
+				continue
+			if not force and _mat.get_pixel(x, y).r > 0.8:
 				continue
 			_mask.set_pixel(x, y, Color.WHITE)
 			_mat.set_pixel(x, y, Color(mat, mat, mat))

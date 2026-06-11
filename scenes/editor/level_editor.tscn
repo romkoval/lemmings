@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://b1leveleditor00"]
+[gd_scene load_steps=5 format=3 uid="uid://b1leveleditor00"]
 
 [ext_resource type="Script" path="res://scenes/editor/level_editor.gd" id="1_script"]
-[ext_resource type="TileSet" path="res://assets/tilesets/main_tileset.tres" id="2_tileset"]
 [ext_resource type="PackedScene" path="res://entities/entrance.tscn" id="3_entrance"]
 [ext_resource type="PackedScene" path="res://entities/exit.tscn" id="4_exit"]
 [ext_resource type="Script" path="res://scenes/game/camera_controller.gd" id="5_camera"]
@@ -10,12 +9,6 @@
 script = ExtResource("1_script")
 
 [node name="World" type="Node2D" parent="."]
-
-[node name="TerrainLayer" type="TileMapLayer" parent="World"]
-tile_set = ExtResource("2_tileset")
-
-[node name="SteelLayer" type="TileMapLayer" parent="World"]
-tile_set = ExtResource("2_tileset")
 
 [node name="Entrance" parent="World" instance=ExtResource("3_entrance")]
 position = Vector2(88, 88)

@@ -112,5 +112,14 @@ func list_custom_levels() -> Array:
 
 
 func delete_custom_level(path: String) -> void:
-	if path.begins_with(CUSTOM_LEVELS_DIR) and FileAccess.file_exists(path):
+	if not path.begins_with(CUSTOM_LEVELS_DIR):
+		return
+	# A level is the JSON plus its painted terrain PNGs (mask + material).
+	var d: Dictionary = load_level_json(path)
+	var dir: String = path.get_base_dir()
+	for key in ["terrain_mask", "terrain_mat"]:
+		var img_name: String = str(d.get(key, ""))
+		if img_name != "" and FileAccess.file_exists(dir + "/" + img_name):
+			DirAccess.remove_absolute(dir + "/" + img_name)
+	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)

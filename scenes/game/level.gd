@@ -30,6 +30,11 @@ const STEEL_SOURCE: int = 1
 @onready var level_exit: LevelExit = $LevelExit
 
 var pixel_terrain: PixelTerrain = null
+# Editor-made levels carry their terrain as painted images instead of tiles;
+# ProceduralLevel fills these from the level JSON before super._ready() runs.
+var pending_terrain_mask: Image = null
+var pending_terrain_mat: Image = null
+var pending_terrain_origin: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -38,15 +43,21 @@ func _ready() -> void:
 	_build_pixel_terrain()
 
 
-# Rasterize the authored tile layers into the per-pixel terrain, then retire
-# the tiles: hidden and physics off — from here on the pixel mask is the only
-# truth for both collision and rendering.
+# Build the per-pixel terrain: either straight from painted images (level
+# editor format, no smoothing — WYSIWYG) or by rasterizing the authored tile
+# layers. The tiles are then retired: hidden and physics off — from here on
+# the pixel mask is the only truth for both collision and rendering.
 func _build_pixel_terrain() -> void:
 	pixel_terrain = PixelTerrain.new()
 	pixel_terrain.name = "PixelTerrain"
 	add_child(pixel_terrain)
 	move_child(pixel_terrain, mini(2, get_child_count() - 1))
-	pixel_terrain.build_from_tiles(terrain_layer, steel_layer)
+	if pending_terrain_mask != null:
+		pixel_terrain.build_from_images(pending_terrain_mask, pending_terrain_mat, pending_terrain_origin)
+		pending_terrain_mask = null
+		pending_terrain_mat = null
+	else:
+		pixel_terrain.build_from_tiles(terrain_layer, steel_layer)
 	terrain_layer.visible = false
 	terrain_layer.collision_enabled = false
 	steel_layer.visible = false

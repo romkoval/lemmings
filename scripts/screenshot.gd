@@ -34,14 +34,39 @@ func _run() -> void:
 			assign = a.substr("--assign=".length())
 		elif a.begins_with("--scene="):
 			scene = a.substr("--scene=".length())
+	var edit_path := ""   # open the editor with this level loaded
+	var paint := false    # demo brush strokes in the editor
+	for a in all_args:
+		if a.begins_with("--edit="):
+			edit_path = a.substr("--edit=".length())
+		elif a == "--paint":
+			paint = true
 	var game: Node
 	if scene != "":
+		if edit_path != "":
+			root.get_node("/root/LevelManager").set("editing_path", edit_path)
 		game = (load(scene) as PackedScene).instantiate()
 	else:
 		game = (load("res://scenes/game/game.tscn") as PackedScene).instantiate()
 		var lp: String = level if level.begins_with("user://") else "res://levels/%s.tscn" % level
 		game.set("initial_level_path", lp)
 	root.add_child(game)
+	if paint and game.has_method("_stroke_at"):
+		await process_frame
+		# A rolling hill, a floating platform and a steel slab, hand-drawn.
+		game.set("brush_radius", 24.0)
+		for i in range(40):
+			var x := 60.0 + i * 16.0
+			game.call("_stroke_at", Vector2(x, 1050.0 + 60.0 * sin(i * 0.25)))
+		game.set("brush_radius", 12.0)
+		game.set("tool", 1)  # STEEL
+		game.set("_last_stroke", Vector2.INF)
+		for i in range(8):
+			game.call("_stroke_at", Vector2(120.0 + i * 14.0, 1150.0))
+		game.set("tool", 0)  # DIRT back
+		game.set("_last_stroke", Vector2.INF)
+		for i in range(10):
+			game.call("_stroke_at", Vector2(420.0 + i * 12.0, 760.0))
 	var ap := assign.split(",")
 	for f in range(frames):
 		if ap.size() == 4 and f == int(ap[3]):

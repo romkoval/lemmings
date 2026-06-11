@@ -1,33 +1,31 @@
 class_name LevelEditor
 extends Node2D
 
-# In-game level editor (touch-first). The player paints terrain on the 16px
-# AUTHORING grid — the same tile format campaign levels use — places the
-# entrance/exit, sets level parameters and saves to user://custom_levels/*.json.
-# Played levels go through the normal pipeline (ProceduralLevel rasterizes the
-# tiles into the per-pixel terrain), so custom levels behave exactly like
-# campaign ones.
+# In-game level editor, WYSIWYG with the pixel world: the canvas IS a live
+# PixelTerrain rendered by the same shader the game uses, and the brushes
+# paint/erase pixels in the same mask the physics reads. What you draw is —
+# bit for bit — what plays.
 #
-# Input: one finger / LMB paints with the active tool; two fingers pinch-zoom
+# Terrain is saved as mask/material PNGs next to the level JSON in
+# user://custom_levels/; played levels load the images straight into
+# PixelTerrain (no tiles, no smoothing, no translation losses).
+#
+# Input: one finger / LMB paints with the active brush; two fingers pinch-zoom
 # and pan; mouse wheel zooms, right/middle drag pans.
 
-const CANVAS_TILES := Vector2i(45, 80)          # 720×1280 world px
-const TILE: int = 16
-const DIRT_ATLAS := Vector2i(1, 0)
-const RAMP_R_ATLAS := Vector2i(0, 1)
-const RAMP_L_ATLAS := Vector2i(1, 1)
+const CANVAS_PX := Vector2i(720, 1280)
 
-enum Tool { DIRT, RAMP_R, RAMP_L, STEEL, ERASE, ENTRANCE, EXIT }
+enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT }
 
 const TOOL_LABELS: Dictionary = {
 	Tool.DIRT: "Грунт",
-	Tool.RAMP_R: "Склон ◢",
-	Tool.RAMP_L: "Склон ◣",
 	Tool.STEEL: "Сталь",
 	Tool.ERASE: "Ластик",
 	Tool.ENTRANCE: "Вход",
 	Tool.EXIT: "Выход",
 }
+const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
+const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
 
 const SKILL_KEYS: Array = [
 	"climber", "floater", "bomber", "blocker", "builder", "basher", "miner", "digger"]
@@ -37,13 +35,14 @@ const SKILL_LABELS: Dictionary = {
 	"miner": "Шахтёр", "digger": "Копатель",
 }
 
-@onready var terrain_layer: TileMapLayer = $World/TerrainLayer
-@onready var steel_layer: TileMapLayer = $World/SteelLayer
 @onready var entrance: Node2D = $World/Entrance
 @onready var level_exit: Node2D = $World/LevelExit
 @onready var camera: Camera2D = $Camera2D
 
+var terrain: PixelTerrain = null
+
 var tool: Tool = Tool.DIRT
+var brush_radius: float = 12.0
 var level_name: String = "Мой уровень"
 var level_id: String = ""
 var save_path: String = ""
@@ -53,8 +52,10 @@ var time_limit: int = 300
 var release_rate: int = 50
 var skill_counts: Dictionary = {}
 
+var _has_content: bool = false
 var _painting: bool = false
-var _last_cell: Vector2i = Vector2i(-1000, -1000)
+var _last_stroke: Vector2 = Vector2.INF
+var _cursor_world: Vector2 = Vector2.INF
 var _touches: Dictionary = {}
 var _gesture: bool = false
 var _pinch_start_dist: float = 0.0
@@ -62,7 +63,6 @@ var _pinch_start_zoom: float = 1.0
 var _pan_last: Vector2 = Vector2.ZERO
 var _mouse_panning: bool = false
 
-var _tool_buttons: Dictionary = {}
 var _params_panel: PanelContainer = null
 var _name_edit: LineEdit = null
 var _spins: Dictionary = {}
@@ -73,8 +73,9 @@ func _ready() -> void:
 	GameManager.set_state(GameManager.GameState.MENU)
 	for k in SKILL_KEYS:
 		skill_counts[k] = 2
+	_init_blank_canvas()
 	_build_ui()
-	camera.setup_bounds(self, Vector2(360.0, 640.0))
+	camera.setup_bounds(self, Vector2(CANVAS_PX) * 0.5)
 	camera.set_zoom_level(1.0)
 	# Returning from a test run (or opening an existing level from the browser).
 	if LevelManager.editing_path != "":
@@ -82,61 +83,73 @@ func _ready() -> void:
 	queue_redraw()
 
 
+# An all-air pixel canvas sized like a campaign level (built through the same
+# tile→mask path the game uses, with empty layers).
+func _init_blank_canvas() -> void:
+	if terrain != null:
+		terrain.queue_free()
+	terrain = PixelTerrain.new()
+	terrain.name = "Canvas"
+	$World.add_child(terrain)
+	$World.move_child(terrain, 0)
+	var empty_t := TileMapLayer.new()
+	var empty_s := TileMapLayer.new()
+	terrain.build_from_tiles(empty_t, empty_s)
+	empty_t.free()
+	empty_s.free()
+	_has_content = false
+
+
 # camera_controller asks the bound node for pan bounds — the editor's canvas.
 func get_terrain_bounds_px() -> Rect2:
-	return Rect2(0, 0, CANVAS_TILES.x * TILE, CANVAS_TILES.y * TILE)
+	return Rect2(Vector2.ZERO, Vector2(CANVAS_PX))
 
 
-# ── Canvas grid ──────────────────────────────────────────────────────────────
+func _process(_delta: float) -> void:
+	queue_redraw()   # brush cursor follows the pointer
+
 
 func _draw() -> void:
-	var w: float = float(CANVAS_TILES.x * TILE)
-	var h: float = float(CANVAS_TILES.y * TILE)
-	var faint := Color(1, 1, 1, 0.07)
-	for x in range(CANVAS_TILES.x + 1):
-		draw_line(Vector2(x * TILE, 0), Vector2(x * TILE, h), faint)
-	for y in range(CANVAS_TILES.y + 1):
-		draw_line(Vector2(0, y * TILE), Vector2(w, y * TILE), faint)
-	draw_rect(Rect2(0, 0, w, h), Color(1, 1, 1, 0.35), false, 2.0)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(CANVAS_PX)), Color(1, 1, 1, 0.35), false, 2.0)
+	if _cursor_world != Vector2.INF and tool in [Tool.DIRT, Tool.STEEL, Tool.ERASE]:
+		var col := Color(1, 1, 1, 0.6)
+		if tool == Tool.STEEL:
+			col = Color(0.7, 0.75, 0.85, 0.8)
+		elif tool == Tool.ERASE:
+			col = Color(1.0, 0.5, 0.4, 0.8)
+		draw_arc(_cursor_world, brush_radius, 0.0, TAU, 40, col, 1.5)
 
 
 # ── Painting ─────────────────────────────────────────────────────────────────
 
-func _cell_at(world: Vector2) -> Vector2i:
-	return Vector2i(floori(world.x / TILE), floori(world.y / TILE))
-
-
-func _in_canvas(c: Vector2i) -> bool:
-	return c.x >= 0 and c.y >= 0 and c.x < CANVAS_TILES.x and c.y < CANVAS_TILES.y
-
-
-func _apply_tool(world: Vector2) -> void:
-	var c: Vector2i = _cell_at(world)
-	if not _in_canvas(c):
-		return
-	if c == _last_cell and tool != Tool.ENTRANCE and tool != Tool.EXIT:
-		return
-	_last_cell = c
+func _stroke_at(world: Vector2) -> void:
+	var p := Vector2(clampf(world.x, 0, CANVAS_PX.x), clampf(world.y, 0, CANVAS_PX.y))
 	match tool:
-		Tool.DIRT:
-			steel_layer.erase_cell(c)
-			terrain_layer.set_cell(c, Level.DIRT_SOURCE, DIRT_ATLAS)
-		Tool.RAMP_R:
-			steel_layer.erase_cell(c)
-			terrain_layer.set_cell(c, Level.DIRT_SOURCE, RAMP_R_ATLAS)
-		Tool.RAMP_L:
-			steel_layer.erase_cell(c)
-			terrain_layer.set_cell(c, Level.DIRT_SOURCE, RAMP_L_ATLAS)
-		Tool.STEEL:
-			terrain_layer.erase_cell(c)
-			steel_layer.set_cell(c, Level.STEEL_SOURCE, Vector2i.ZERO)
-		Tool.ERASE:
-			terrain_layer.erase_cell(c)
-			steel_layer.erase_cell(c)
 		Tool.ENTRANCE:
-			entrance.position = Vector2(c.x * TILE + 8, c.y * TILE + 8)
+			entrance.position = p.round()
+			return
 		Tool.EXIT:
-			level_exit.position = Vector2(c.x * TILE + 8, c.y * TILE + 8)
+			level_exit.position = p.round()
+			return
+		_:
+			pass
+	# Brush stroke: stamp circles from the last point to this one so fast drags
+	# leave a continuous band, not dotted blobs.
+	var from := p if _last_stroke == Vector2.INF else _last_stroke
+	var dist := from.distance_to(p)
+	var steps: int = maxi(1, int(ceilf(dist / maxf(brush_radius * 0.4, 2.0))))
+	for i in range(1, steps + 1):
+		var q := from.lerp(p, float(i) / float(steps))
+		match tool:
+			Tool.DIRT:
+				terrain.fill_circle(q, brush_radius, PixelTerrain.MAT_DIRT, true)
+				_has_content = true
+			Tool.STEEL:
+				terrain.fill_circle(q, brush_radius, PixelTerrain.MAT_STEEL, true)
+				_has_content = true
+			Tool.ERASE:
+				terrain.carve_circle(q, brush_radius, true)
+	_last_stroke = p
 
 
 # ── Input: paint / pan / zoom ────────────────────────────────────────────────
@@ -148,8 +161,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_touches[st.index] = st.position
 			if _touches.size() == 1:
 				_painting = true
-				_last_cell = Vector2i(-1000, -1000)
-				_apply_tool(_screen_to_world(st.position))
+				_last_stroke = Vector2.INF
+				_stroke_at(_screen_to_world(st.position))
 			else:
 				_painting = false
 				_gesture = true
@@ -162,17 +175,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var sd := event as InputEventScreenDrag
 		_touches[sd.index] = sd.position
+		_cursor_world = _screen_to_world(sd.position)
 		if _gesture and _touches.size() >= 2:
 			_update_pinch()
 		elif _painting:
-			_apply_tool(_screen_to_world(sd.position))
+			_stroke_at(_cursor_world)
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			_painting = mb.pressed
 			if mb.pressed:
-				_last_cell = Vector2i(-1000, -1000)
-				_apply_tool(get_global_mouse_position())
+				_last_stroke = Vector2.INF
+				_stroke_at(get_global_mouse_position())
 		elif mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			_mouse_panning = mb.pressed
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
@@ -181,10 +195,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera.zoom_by(1.0 / 1.1)
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
+		_cursor_world = get_global_mouse_position()
 		if _mouse_panning:
 			camera.pan_screen(mm.relative)
 		elif _painting:
-			_apply_tool(get_global_mouse_position())
+			_stroke_at(_cursor_world)
 
 
 func _screen_to_world(screen: Vector2) -> Vector2:
@@ -214,16 +229,9 @@ func _update_pinch() -> void:
 
 # ── Save / load / test ───────────────────────────────────────────────────────
 
-func _collect_data() -> Dictionary:
+func _collect_meta() -> Dictionary:
 	if level_id == "":
 		level_id = "custom_%d" % (Time.get_unix_time_from_system() as int)
-	var tiles: Array = []
-	for c in terrain_layer.get_used_cells():
-		var atlas: Vector2i = terrain_layer.get_cell_atlas_coords(c)
-		tiles.append([c.x, c.y, atlas.x, atlas.y])
-	var steel: Array = []
-	for c in steel_layer.get_used_cells():
-		steel.append([c.x, c.y])
 	return {
 		"id": level_id,
 		"name": level_name,
@@ -236,8 +244,9 @@ func _collect_data() -> Dictionary:
 		"entrance_pos": [entrance.position.x, entrance.position.y],
 		"entrance_direction": 1,
 		"exit_pos": [level_exit.position.x, level_exit.position.y],
-		"terrain_tiles": tiles,
-		"steel": steel,
+		"terrain_mask": level_id + "_mask.png",
+		"terrain_mat": level_id + "_mat.png",
+		"terrain_origin": [terrain.bounds_px().position.x, terrain.bounds_px().position.y],
 	}
 
 
@@ -262,27 +271,75 @@ func _load_from(path: String) -> void:
 	var xp = d.get("exit_pos", null)
 	if xp is Array and xp.size() == 2:
 		level_exit.position = Vector2(float(xp[0]), float(xp[1]))
-	terrain_layer.clear()
-	steel_layer.clear()
-	for cell in d.get("terrain_tiles", []):
+	_load_terrain(d, path.get_base_dir())
+
+
+func _load_terrain(d: Dictionary, dir: String) -> void:
+	# Preferred: painted mask/material images (exact WYSIWYG round-trip).
+	var mask_name: String = str(d.get("terrain_mask", ""))
+	if mask_name != "":
+		var mask_img := _load_png(dir + "/" + mask_name)
+		if mask_img != null:
+			var mat_img := _load_png(dir + "/" + str(d.get("terrain_mat", "")))
+			var org = d.get("terrain_origin", null)
+			var origin := Vector2i(-320, -384)
+			if org is Array and org.size() == 2:
+				origin = Vector2i(int(org[0]), int(org[1]))
+			terrain.build_from_images(mask_img, mat_img, origin)
+			_has_content = true
+			return
+	# Legacy: tile lists from the first editor version — rasterize through the
+	# same tile path the game uses (smoothing included) and continue in pixels.
+	var tiles: Array = d.get("terrain_tiles", [])
+	var steel: Array = d.get("steel", [])
+	if tiles.is_empty() and steel.is_empty():
+		return
+	var tileset: TileSet = load("res://assets/tilesets/main_tileset.tres")
+	var t := TileMapLayer.new()
+	t.tile_set = tileset
+	var s := TileMapLayer.new()
+	s.tile_set = tileset
+	for cell in tiles:
 		if cell is Array and cell.size() >= 2:
-			var atlas := DIRT_ATLAS
+			var atlas := Vector2i(1, 0)
 			if cell.size() >= 4:
 				atlas = Vector2i(int(cell[2]), int(cell[3]))
-			terrain_layer.set_cell(Vector2i(int(cell[0]), int(cell[1])), Level.DIRT_SOURCE, atlas)
-	for cell in d.get("steel", []):
+			t.set_cell(Vector2i(int(cell[0]), int(cell[1])), Level.DIRT_SOURCE, atlas)
+	for cell in steel:
 		if cell is Array and cell.size() == 2:
-			steel_layer.set_cell(Vector2i(int(cell[0]), int(cell[1])), Level.STEEL_SOURCE, Vector2i.ZERO)
+			s.set_cell(Vector2i(int(cell[0]), int(cell[1])), Level.STEEL_SOURCE, Vector2i.ZERO)
+	terrain.build_from_tiles(t, s)
+	t.free()
+	s.free()
+	_has_content = true
+
+
+func _load_png(path: String) -> Image:
+	if path.ends_with("/") or not FileAccess.file_exists(path):
+		return null
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty():
+		return null
+	var img := Image.new()
+	if img.load_png_from_buffer(bytes) != OK:
+		return null
+	return img
 
 
 func _save(show_toast: bool = true) -> bool:
-	if terrain_layer.get_used_cells().is_empty():
+	if not _has_content:
 		_show_toast("Нарисуйте ландшафт перед сохранением")
 		return false
+	var meta: Dictionary = _collect_meta()   # assigns level_id
 	if save_path == "":
-		_collect_data()   # assigns level_id
 		save_path = LevelManager.CUSTOM_LEVELS_DIR + level_id + ".json"
-	var ok: bool = LevelManager.save_level_json(save_path, _collect_data())
+	LevelManager.ensure_custom_dir()
+	var imgs: Dictionary = terrain.export_images()
+	var dir: String = save_path.get_base_dir()
+	var ok := true
+	ok = (imgs["mask"] as Image).save_png(dir + "/" + str(meta["terrain_mask"])) == OK and ok
+	ok = (imgs["mat"] as Image).save_png(dir + "/" + str(meta["terrain_mat"])) == OK and ok
+	ok = LevelManager.save_level_json(save_path, meta) and ok
 	if show_toast:
 		_show_toast("Сохранено: %s" % level_name if ok else "Ошибка сохранения")
 	return ok
@@ -333,7 +390,7 @@ func _build_ui() -> void:
 	top_box.add_child(_mk_button("▶ Тест", _test_play))
 	top_box.add_child(_mk_button("💾 Сохранить", func(): _save()))
 
-	# Bottom tool bar.
+	# Bottom bar: tools + brush sizes.
 	var bottom := PanelContainer.new()
 	bottom.anchor_top = 1.0
 	bottom.anchor_right = 1.0
@@ -357,7 +414,22 @@ func _build_ui() -> void:
 			if on:
 				tool = t)
 		tool_box.add_child(b)
-		_tool_buttons[t] = b
+	var sep := VSeparator.new()
+	tool_box.add_child(sep)
+	var brush_group := ButtonGroup.new()
+	for i in BRUSH_SIZES.size():
+		var b := Button.new()
+		b.text = BRUSH_LABELS[i]
+		b.toggle_mode = true
+		b.button_group = brush_group
+		b.custom_minimum_size = Vector2(56, 60)
+		b.add_theme_font_size_override("font_size", 20)
+		b.button_pressed = (BRUSH_SIZES[i] == brush_radius)
+		var r: float = BRUSH_SIZES[i]
+		b.toggled.connect(func(on: bool):
+			if on:
+				brush_radius = r)
+		tool_box.add_child(b)
 
 	_build_params_panel(ui)
 
