@@ -1,13 +1,14 @@
 class_name DiggerSkill
 extends BaseSkill
 
-# Descend speed while digging straight down, in pixels per physics tick. 0.5px
-# ≈ 30 px/s — half the 60 px/s walk speed, so a 16px block takes ~0.5s. The
-# lemming sinks gradually through each block instead of whole tiles vanishing in
-# an instant cascade.
-const DIG_SPEED: float = 0.5
+# Digs a vertical shaft straight down, pixel-style: each tick the digger sinks
+# a fraction of a pixel and carves a thin slab of ground out from under its
+# feet across the shaft width, so the ground crumbles gradually instead of
+# whole blocks vanishing at once.
 
-var _last_cleared: Vector2i = Vector2i(2147483647, 2147483647)
+# Descent in px per physics tick. 0.5px ≈ 30 px/s — half walking speed.
+const DIG_SPEED: float = 0.5
+const SHAFT_HALF_W: int = 7   # 14px wide shaft, a body's width plus margin
 
 
 func get_skill_name() -> String:
@@ -19,7 +20,6 @@ func can_apply(lemming: Lemming) -> bool:
 
 
 func apply(lemming: Lemming) -> void:
-	_last_cleared = Vector2i(2147483647, 2147483647)
 	lemming.change_state(Lemming.State.DIGGING)
 
 
@@ -28,20 +28,23 @@ func tick(lemming: Lemming) -> void:
 	if level == null:
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	# Tile under the feet (body settles ~1px high, so probe +18 to hit the floor).
-	var tile: Vector2i = level.world_to_tile(lemming.global_position + Vector2(8, 18))
-	if level.is_steel_at(tile):
+	var fx: int = lemming.feet_x()
+	var fy: int = lemming.feet_y()
+	# Steel right under the feet stops the dig.
+	if level.is_steel_px(Vector2(fx + 0.5, fy + 1.5)):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	if level.is_terrain_at(tile):
-		# Reached a fresh block — carve it once, then keep sinking through it.
-		if tile != _last_cleared:
-			level.remove_terrain_at(tile)
-			_last_cleared = tile
-	elif not level.is_solid_at(tile + Vector2i(0, 1)):
-		# Current cell empty and nothing solid right below — broke through into
-		# open space, so start falling.
+	# Carve a 2px slab at foot level across the shaft, then sink into it. The
+	# same slab feeds several ticks of fractional descent, so carved == 0 is
+	# normal mid-block — only running out of ground below ends the dig.
+	level.carve_rect_px(Rect2i(fx - SHAFT_HALF_W, fy, SHAFT_HALF_W * 2, 2))
+	var open_below: bool = true
+	for dy in range(1, 5):
+		if level.is_solid_px(Vector2(fx + 0.5, fy + dy + 0.5)):
+			open_below = false
+			break
+	if open_below:
+		# Broke through the bottom — fall into the shaft.
 		lemming.change_state(Lemming.State.FALLING)
 		return
-	# Sink gradually.
 	lemming.global_position.y += DIG_SPEED

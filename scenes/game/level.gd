@@ -2,9 +2,9 @@ class_name Level
 extends Node2D
 
 const TILE_SIZE: int = 16
-# TileSet source ids: terrain tiles live on source 0, steel on source 1. Since
-# the 4.6 migration each occupies its own TileMapLayer node (terrain_layer /
-# steel_layer) instead of two layers of a single deprecated TileMap.
+# TileSet source ids — used only while AUTHORING (procedural generation /
+# editor-placed cells). At runtime the tile layers are rasterized into the
+# per-pixel terrain and hidden; gameplay never touches tiles again.
 const DIRT_SOURCE: int = 0
 const STEEL_SOURCE: int = 1
 
@@ -29,46 +29,63 @@ const STEEL_SOURCE: int = 1
 @onready var entrance: Entrance = $Entrance
 @onready var level_exit: LevelExit = $LevelExit
 
+var pixel_terrain: PixelTerrain = null
+
 
 func _ready() -> void:
 	if entrance:
 		entrance.configure(total_lemmings, release_rate)
+	_build_pixel_terrain()
 
 
-func is_steel_at(tile_coord: Vector2i) -> bool:
-	return steel_layer != null and steel_layer.get_cell_source_id(tile_coord) != -1
+# Rasterize the authored tile layers into the per-pixel terrain, then retire
+# the tiles: hidden and physics off — from here on the pixel mask is the only
+# truth for both collision and rendering.
+func _build_pixel_terrain() -> void:
+	pixel_terrain = PixelTerrain.new()
+	pixel_terrain.name = "PixelTerrain"
+	add_child(pixel_terrain)
+	move_child(pixel_terrain, mini(2, get_child_count() - 1))
+	pixel_terrain.build_from_tiles(terrain_layer, steel_layer)
+	terrain_layer.visible = false
+	terrain_layer.collision_enabled = false
+	steel_layer.visible = false
+	steel_layer.collision_enabled = false
 
 
-func is_terrain_at(tile_coord: Vector2i) -> bool:
-	return terrain_layer != null and terrain_layer.get_cell_source_id(tile_coord) != -1
+# ── Pixel terrain API (world pixel coordinates) ─────────────────────────────
+
+func is_solid_px(wp: Vector2) -> bool:
+	return pixel_terrain != null and pixel_terrain.is_solid_px(wp)
 
 
-func is_solid_at(tile_coord: Vector2i) -> bool:
-	return is_terrain_at(tile_coord) or is_steel_at(tile_coord)
+func is_steel_px(wp: Vector2) -> bool:
+	return pixel_terrain != null and pixel_terrain.is_steel_px(wp)
 
 
-func remove_terrain_at(tile_coord: Vector2i) -> bool:
-	if terrain_layer == null:
-		return false
-	if is_steel_at(tile_coord):
-		return false
-	if terrain_layer.get_cell_source_id(tile_coord) == -1:
-		return false
-	terrain_layer.erase_cell(tile_coord)
-	return true
+# Carve destructible pixels (steel survives). Returns pixels removed.
+func carve_rect_px(r: Rect2i) -> int:
+	return pixel_terrain.carve_rect(r) if pixel_terrain != null else 0
 
 
-func add_terrain_at(tile_coord: Vector2i, source_id: int = DIRT_SOURCE, atlas: Vector2i = Vector2i.ZERO) -> bool:
-	if terrain_layer == null:
-		return false
-	if terrain_layer.get_cell_source_id(tile_coord) != -1:
-		return false
-	terrain_layer.set_cell(tile_coord, source_id, atlas)
-	return true
+func carve_circle_px(center: Vector2, radius: float) -> int:
+	return pixel_terrain.carve_circle(center, radius) if pixel_terrain != null else 0
 
 
-# Bounding box of all placed terrain + steel, in world pixels. Used by the
-# camera to clamp panning so the view never drifts off the built level.
+func fill_rect_px(r: Rect2i, mat: float = PixelTerrain.MAT_DIRT) -> void:
+	if pixel_terrain != null:
+		pixel_terrain.fill_rect(r, mat)
+
+
+func rect_has_steel_px(r: Rect2i) -> bool:
+	return pixel_terrain != null and pixel_terrain.rect_has_steel(r)
+
+
+# ── Authoring helpers ───────────────────────────────────────────────────────
+
+# Bounding box of the authored terrain in world pixels (camera pan clamp).
+# Computed from the tile layers, which keep the authored level data even after
+# being rasterized and hidden.
 func get_terrain_bounds_px() -> Rect2:
 	var r: Rect2i = Rect2i()
 	if terrain_layer != null:
