@@ -17,6 +17,8 @@ var dead_count: int = 0
 # Simulation tick counter (US-3.1): advances only while PLAYING, so replay
 # events recorded against it land on the exact same physics tick on playback.
 var sim_tick: int = 0
+# Death causes of the current level run (US-3.4): cause -> count.
+var death_causes: Dictionary = {}
 
 
 func _physics_process(_delta: float) -> void:
@@ -41,6 +43,7 @@ func start_level(level_id: String, total: int = 0) -> void:
 	spawned_count = 0
 	dead_count = 0
 	sim_tick = 0
+	death_causes = {}
 	set_state(GameState.PLAYING)
 	level_started.emit(level_id)
 
@@ -54,8 +57,10 @@ func notify_lemming_spawned() -> void:
 	spawned_count += 1
 
 
-func notify_lemming_died() -> void:
+func notify_lemming_died(cause: String = "") -> void:
 	dead_count += 1
+	if cause != "":
+		death_causes[cause] = int(death_causes.get(cause, 0)) + 1
 	_check_resolved()
 
 
@@ -89,6 +94,7 @@ func complete_level(required_count: int) -> void:
 	if current_state == GameState.RESULT:
 		return
 	set_state(GameState.RESULT)
+	SaveManager.accumulate_stats(saved_count, death_causes, saved_count >= required_count)
 	if saved_count >= required_count:
 		level_completed.emit(saved_count, required_count)
 		SaveManager.mark_level_complete(current_level_id)

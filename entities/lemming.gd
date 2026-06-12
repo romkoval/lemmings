@@ -424,7 +424,7 @@ func mark_saved() -> void:
 
 func die(cause: String) -> void:
 	lemming_died.emit(self, cause)
-	GameManager.notify_lemming_died()
+	GameManager.notify_lemming_died(cause)
 	# A bomb death already voiced its "oh no" during the shrug and its blast.
 	if cause != "bomb":
 		AudioManager.play_sfx("oh_no")

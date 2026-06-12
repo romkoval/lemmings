@@ -23,6 +23,39 @@ func _ready() -> void:
 	sfx_slider.drag_ended.connect(_on_sfx_drag_ended)
 	mute_check.toggled.connect(_on_mute_toggled)
 	back_button.pressed.connect(_on_back)
+	_build_stats_block()
+
+
+# Lifetime statistics (US-3.4), shown under the audio settings.
+const CAUSE_LABELS: Dictionary = {
+	"splat": "Разбились", "drowned": "Утонули", "burned": "Сгорели",
+	"trapped": "В ловушках", "bomb": "Взорвались", "fell_out": "Пропали в бездне",
+}
+
+
+func _build_stats_block() -> void:
+	var box: VBoxContainer = back_button.get_parent()
+	var header := Label.new()
+	header.text = "Статистика"
+	header.add_theme_font_size_override("font_size", 26)
+	box.add_child(header)
+	box.move_child(header, back_button.get_index())
+	var s: Dictionary = SaveManager.stats
+	var lines: Array = [
+		"Уровней пройдено: %d из %d сыгранных" % [int(s.get("levels_won", 0)), int(s.get("levels_played", 0))],
+		"Спасено леммингов: %d" % int(s.get("saved", 0)),
+		"Погибло леммингов: %d" % int(s.get("dead", 0)),
+	]
+	var by_cause: Dictionary = s.get("by_cause", {})
+	for cause in CAUSE_LABELS:
+		if int(by_cause.get(cause, 0)) > 0:
+			lines.append("  %s: %d" % [CAUSE_LABELS[cause], int(by_cause[cause])])
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 20)
+		box.add_child(lbl)
+		box.move_child(lbl, back_button.get_index())
 
 
 func _on_music_changed(v: float) -> void:
