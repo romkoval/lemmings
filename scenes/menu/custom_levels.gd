@@ -9,10 +9,51 @@ extends Control
 @onready var back_button: Button = $TopBar/BackButton
 
 
+var _import_button: Button = null
+var _status: Label = null
+
+
 func _ready() -> void:
 	new_button.pressed.connect(_on_new)
 	back_button.pressed.connect(_on_back)
+	# Import any .lemlvl bundles dropped into user://custom_levels/ (US-4.1):
+	# on desktop copy the file there; on mobile via the Files app share.
+	_import_button = Button.new()
+	_import_button.text = "Импорт"
+	_import_button.custom_minimum_size = Vector2(0, new_button.custom_minimum_size.y)
+	_import_button.add_theme_font_size_override("font_size", 20)
+	_import_button.pressed.connect(_on_import)
+	new_button.get_parent().add_child(_import_button)
+	new_button.get_parent().move_child(_import_button, new_button.get_index() + 1)
+	_status = Label.new()
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.add_theme_font_size_override("font_size", 18)
+	list_container.get_parent().get_parent().add_child(_status)
 	_refresh()
+
+
+func _on_import() -> void:
+	var imported := 0
+	var dir := DirAccess.open(LevelManager.CUSTOM_LEVELS_DIR)
+	if dir != null:
+		dir.list_dir_begin()
+		var fname: String = dir.get_next()
+		while fname != "":
+			if fname.ends_with(".lemlvl"):
+				var path: String = LevelManager.CUSTOM_LEVELS_DIR + fname
+				if LevelManager.import_level(path) != "":
+					imported += 1
+					DirAccess.remove_absolute(path)
+			fname = dir.get_next()
+		dir.list_dir_end()
+	_status.text = ("Импортировано уровней: %d" % imported) if imported > 0 \
+		else "Положите .lemlvl в папку custom_levels и нажмите «Импорт»"
+	_refresh()
+
+
+func _on_export(info: Dictionary) -> void:
+	var out: String = LevelManager.export_level(str(info["path"]))
+	_status.text = ("Экспортировано: %s" % out.get_file()) if out != "" else "Ошибка экспорта"
 
 
 func _refresh() -> void:
@@ -39,6 +80,7 @@ func _refresh() -> void:
 		row.add_child(name_label)
 		row.add_child(_mk_button("▶", _on_play.bind(info), Vector2(64, 56)))
 		row.add_child(_mk_button("✎", _on_edit.bind(info), Vector2(64, 56)))
+		row.add_child(_mk_button("⇪", _on_export.bind(info), Vector2(64, 56)))
 		row.add_child(_mk_button("✕", _on_delete.bind(info), Vector2(64, 56)))
 
 

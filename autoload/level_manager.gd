@@ -114,6 +114,69 @@ func list_custom_levels() -> Array:
 	return result
 
 
+# ── Sharing: one-file export/import (US-4.1) ────────────────────────────────
+# A .lemlvl bundle is the level JSON with its terrain PNGs embedded as base64 —
+# one self-contained file that can be sent through any channel and imported on
+# another device.
+
+func export_level(json_path: String) -> String:
+	var d: Dictionary = load_level_json(json_path)
+	if d.is_empty():
+		return ""
+	var bundle: Dictionary = d.duplicate(true)
+	var dir: String = json_path.get_base_dir()
+	for key in ["terrain_mask", "terrain_mat"]:
+		var img_name: String = str(d.get(key, ""))
+		if img_name != "" and FileAccess.file_exists(dir + "/" + img_name):
+			bundle[key + "_b64"] = Marshalls.raw_to_base64(
+				FileAccess.get_file_as_bytes(dir + "/" + img_name))
+	var out_path: String = CUSTOM_LEVELS_DIR + str(d.get("id", "level")) + ".lemlvl"
+	ensure_custom_dir()
+	var f := FileAccess.open(out_path, FileAccess.WRITE)
+	if f == null:
+		return ""
+	f.store_string(JSON.stringify(bundle))
+	f.close()
+	return out_path
+
+
+# Returns the imported level's JSON path, or "" if the bundle is invalid.
+func import_level(bundle_path: String) -> String:
+	if not FileAccess.file_exists(bundle_path):
+		return ""
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(bundle_path)) != OK or not (json.data is Dictionary):
+		return ""
+	var d: Dictionary = json.data
+	# Minimal validation: identity plus SOME terrain source.
+	if str(d.get("id", "")) == "" or str(d.get("name", "")) == "":
+		return ""
+	var has_terrain: bool = d.has("terrain_mask_b64") or d.has("terrain_tiles") \
+		or d.has("terrain_rects")
+	if not has_terrain:
+		return ""
+	ensure_custom_dir()
+	# Never overwrite an existing level: suffix the id on collision.
+	var id: String = str(d["id"])
+	while FileAccess.file_exists(CUSTOM_LEVELS_DIR + id + ".json"):
+		id += "_imp"
+	d["id"] = id
+	d["custom"] = true
+	for key in ["terrain_mask", "terrain_mat"]:
+		var b64: String = str(d.get(key + "_b64", ""))
+		d.erase(key + "_b64")
+		if b64 != "":
+			var img_name: String = id + "_" + key.trim_prefix("terrain_") + ".png"
+			var fimg := FileAccess.open(CUSTOM_LEVELS_DIR + img_name, FileAccess.WRITE)
+			if fimg == null:
+				return ""
+			fimg.store_buffer(Marshalls.base64_to_raw(b64))
+			fimg.close()
+			d[key] = img_name
+	var out: String = CUSTOM_LEVELS_DIR + id + ".json"
+	return out if save_level_json(out, d) else ""
+
+
 # ── Replays (US-3.1) ────────────────────────────────────────────────────────
 # A replay is the event log of one attempt: [{t, type, ...}] keyed by the
 # simulation tick. Stored one per level id — the latest finished attempt.
