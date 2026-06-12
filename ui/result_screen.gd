@@ -35,7 +35,7 @@ func show_result(success: bool, saved: int, required: int, total: int, has_next:
 	else:
 		title_label.text = "ПОРАЖЕНИЕ"
 		title_label.modulate = Color(1.0, 0.4, 0.4)
-	stats_label.text = "Спасено: %d из %d\nЦель: %d" % [saved, total, required]
+	stats_label.text = tr("Спасено: %d из %d\nЦель: %d") % [saved, total, required]
 	# "Next" only makes sense after a win and when a following level exists.
 	next_button.visible = success and has_next
 	visible = true

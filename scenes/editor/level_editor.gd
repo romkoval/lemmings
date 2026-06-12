@@ -501,7 +501,7 @@ func _save(show_toast: bool = true) -> bool:
 	ok = (imgs["mat"] as Image).save_png(dir + "/" + str(meta["terrain_mat"])) == OK and ok
 	ok = LevelManager.save_level_json(save_path, meta) and ok
 	if show_toast:
-		_show_toast("Сохранено: %s" % level_name if ok else "Ошибка сохранения")
+		_show_toast(tr("Сохранено: %s") % level_name if ok else tr("Ошибка сохранения"))
 	return ok
 
 

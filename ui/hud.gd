@@ -213,9 +213,9 @@ func mark_selected_skill(skill_name: String) -> void:
 
 func _update_labels() -> void:
 	if saved_label:
-		saved_label.text = "Спасено: %d / %d" % [GameManager.saved_count, required_saved]
+		saved_label.text = tr("Спасено: %d / %d") % [GameManager.saved_count, required_saved]
 	if spawned_label:
-		spawned_label.text = "Вышло: %d" % GameManager.spawned_count
+		spawned_label.text = tr("Вышло: %d") % GameManager.spawned_count
 	if timer_label:
 		var m: int = int(time_remaining) / 60
 		var s: int = int(time_remaining) % 60

@@ -33,6 +33,11 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/i18n/translations.ru.translation", "res://assets/i18n/translations.en.translation")
+locale/fallback="ru"
+
 [audio]
 
 buses/default_bus_layout="res://default_bus_layout.tres"

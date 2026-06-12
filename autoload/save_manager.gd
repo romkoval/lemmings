@@ -24,6 +24,11 @@ var stats: Dictionary = {
 
 func _ready() -> void:
 	load_progress()
+	apply_locale()
+
+
+func apply_locale() -> void:
+	TranslationServer.set_locale(str(settings.get("locale", "ru")))
 
 
 func mark_level_complete(level_id: String) -> void:

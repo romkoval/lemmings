@@ -46,14 +46,14 @@ func _on_import() -> void:
 					DirAccess.remove_absolute(path)
 			fname = dir.get_next()
 		dir.list_dir_end()
-	_status.text = ("Импортировано уровней: %d" % imported) if imported > 0 \
-		else "Положите .lemlvl в папку custom_levels и нажмите «Импорт»"
+	_status.text = (tr("Импортировано уровней: %d") % imported) if imported > 0 \
+		else tr("Положите .lemlvl в папку custom_levels и нажмите «Импорт»")
 	_refresh()
 
 
 func _on_export(info: Dictionary) -> void:
 	var out: String = LevelManager.export_level(str(info["path"]))
-	_status.text = ("Экспортировано: %s" % out.get_file()) if out != "" else "Ошибка экспорта"
+	_status.text = (tr("Экспортировано: %s") % out.get_file()) if out != "" else tr("Ошибка экспорта")
 
 
 func _refresh() -> void:
