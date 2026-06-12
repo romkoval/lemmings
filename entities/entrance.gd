@@ -17,14 +17,23 @@ var max_spawn: int = 0
 var spawn_interval: float = 2.0
 var time_since_spawn: float = 999.0
 var is_active: bool = false
+var release_rate: int = 50
 
 
-func configure(total: int, release_rate: int) -> void:
+func configure(total: int, rate: int) -> void:
 	max_spawn = total
-	spawn_interval = clamp(remap(release_rate, 1.0, 99.0, 3.0, 0.3), 0.3, 3.0)
+	set_release_rate(rate)
 	spawned_count = 0
 	time_since_spawn = spawn_interval
 	is_active = true
+
+
+# Player-adjustable mid-level (the classic RR−/RR+ control). The elapsed
+# time_since_spawn is kept, so raising the rate can release the next lemming
+# immediately — exactly how the original behaves.
+func set_release_rate(rate: int) -> void:
+	release_rate = clampi(rate, 1, 99)
+	spawn_interval = clamp(remap(release_rate, 1.0, 99.0, 3.0, 0.3), 0.3, 3.0)
 
 
 func _process(delta: float) -> void:

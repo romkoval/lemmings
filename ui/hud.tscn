@@ -61,6 +61,28 @@ offset_top = -112.0
 [node name="SkillPanel" type="HBoxContainer" parent="BottomBar"]
 script = ExtResource("2_panel")
 
+[node name="ReleaseControls" type="VBoxContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = -274.0
+offset_right = 74.0
+offset_bottom = -122.0
+theme_override_constants/separation = 4
+
+[node name="RatePlus" type="Button" parent="ReleaseControls"]
+custom_minimum_size = Vector2(56, 56)
+text = "+"
+
+[node name="RateLabel" type="Label" parent="ReleaseControls"]
+text = "50"
+horizontal_alignment = 1
+
+[node name="RateMinus" type="Button" parent="ReleaseControls"]
+custom_minimum_size = Vector2(56, 56)
+text = "−"
+
 [node name="ZoomControls" type="VBoxContainer" parent="."]
 anchors_preset = 3
 anchor_left = 1.0

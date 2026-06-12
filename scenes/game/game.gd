@@ -52,6 +52,7 @@ func _ready() -> void:
 	hud.skill_chosen.connect(_on_skill_chosen)
 	hud.zoom_in_pressed.connect(func(): camera.zoom_in())
 	hud.zoom_out_pressed.connect(func(): camera.zoom_out())
+	hud.release_rate_changed.connect(_on_release_rate_changed)
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
 	hud.time_expired.connect(_on_time_expired)
 	GameManager.all_lemmings_resolved.connect(_on_all_resolved)
@@ -102,6 +103,7 @@ func load_level(scene_path: String) -> void:
 		current_level.save_required,
 		current_level.time_limit,
 		skill_manager.skill_counts,
+		current_level.release_rate,
 	)
 	GameManager.start_level(current_level.level_id, current_level.total_lemmings)
 	# Frame the camera on the level: clamp panning to the terrain and centre on
@@ -273,6 +275,11 @@ func _on_pause() -> void:
 
 func _on_nuke() -> void:
 	lemming_manager.nuke_all()
+
+
+func _on_release_rate_changed(rate: int) -> void:
+	if current_level and current_level.entrance:
+		current_level.entrance.set_release_rate(rate)
 
 
 func _on_all_resolved() -> void:
