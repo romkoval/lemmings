@@ -131,6 +131,48 @@ func export_images() -> Dictionary:
 # load-time snapshot, so carved tunnels expose bare dirt. Set before build.
 var live_grass: bool = false
 
+# Visual themes (US-2.1): palette presets pushed into the terrain shader, like
+# the four worlds of the original (dirt / fire / marble / crystal). Physics is
+# untouched — a theme is purely the dirt palette + the surface band colours.
+# Every theme lists the FULL set so switching never leaves stale uniforms.
+const THEMES: Dictionary = {
+	"dirt": {
+		"dirt_light": Color(0.78, 0.58, 0.32), "dirt_mid": Color(0.58, 0.40, 0.20),
+		"dirt_dark": Color(0.38, 0.24, 0.10), "dirt_deep": Color(0.22, 0.14, 0.06),
+		"grass_hi": Color(0.55, 0.93, 0.27), "grass_lo": Color(0.22, 0.62, 0.12),
+	},
+	"fire": {
+		"dirt_light": Color(0.95, 0.45, 0.18), "dirt_mid": Color(0.72, 0.28, 0.08),
+		"dirt_dark": Color(0.45, 0.13, 0.04), "dirt_deep": Color(0.24, 0.05, 0.02),
+		"grass_hi": Color(1.00, 0.85, 0.30), "grass_lo": Color(0.95, 0.45, 0.10),
+	},
+	"marble": {
+		"dirt_light": Color(0.92, 0.92, 0.95), "dirt_mid": Color(0.74, 0.75, 0.82),
+		"dirt_dark": Color(0.52, 0.54, 0.62), "dirt_deep": Color(0.33, 0.34, 0.42),
+		"grass_hi": Color(0.85, 0.95, 1.00), "grass_lo": Color(0.55, 0.65, 0.80),
+	},
+	"crystal": {
+		"dirt_light": Color(0.55, 0.45, 0.95), "dirt_mid": Color(0.38, 0.28, 0.75),
+		"dirt_dark": Color(0.22, 0.15, 0.50), "dirt_deep": Color(0.10, 0.07, 0.30),
+		"grass_hi": Color(0.50, 0.95, 1.00), "grass_lo": Color(0.20, 0.55, 0.85),
+	},
+}
+
+var theme_name: String = "dirt"
+
+
+func set_theme(name: String) -> void:
+	theme_name = name if THEMES.has(name) else "dirt"
+	_apply_theme()
+
+
+func _apply_theme() -> void:
+	var sh := material as ShaderMaterial
+	if sh == null:
+		return
+	for key in THEMES[theme_name]:
+		sh.set_shader_parameter(key, THEMES[theme_name][key])
+
 
 func _finalize_build() -> void:
 	_mask_tex = ImageTexture.create_from_image(_mask)
@@ -150,6 +192,7 @@ func _finalize_build() -> void:
 	var orig_tex: ImageTexture = _mask_tex if live_grass else ImageTexture.create_from_image(_mask)
 	sh.set_shader_parameter("orig_mask", orig_tex)
 	material = sh
+	_apply_theme()
 
 
 # Round off the blocky tile corners so the relief reads as organic ground, not

@@ -65,6 +65,7 @@ func _apply_data(d: Dictionary) -> void:
 	time_limit = int(d.get("time_limit", time_limit))
 	total_lemmings = int(d.get("total_lemmings", total_lemmings))
 	release_rate = int(d.get("release_rate", release_rate))
+	terrain_theme = str(d.get("theme", terrain_theme))
 	var sk = d.get("skill_counts", null)
 	if sk is Dictionary:
 		skill_counts = sk

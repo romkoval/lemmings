@@ -13,6 +13,7 @@ const STEEL_SOURCE: int = 1
 @export var time_limit: int = 300
 @export var total_lemmings: int = 10
 @export var release_rate: int = 50
+@export var terrain_theme: String = "dirt"   # visual palette: dirt/fire/marble/crystal
 @export var skill_counts: Dictionary = {
 	"climber": 0,
 	"floater": 0,
@@ -50,6 +51,7 @@ func _ready() -> void:
 func _build_pixel_terrain() -> void:
 	pixel_terrain = PixelTerrain.new()
 	pixel_terrain.name = "PixelTerrain"
+	pixel_terrain.theme_name = terrain_theme
 	add_child(pixel_terrain)
 	move_child(pixel_terrain, mini(2, get_child_count() - 1))
 	if pending_terrain_mask != null:

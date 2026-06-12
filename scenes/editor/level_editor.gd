@@ -35,6 +35,11 @@ const TOOL_LABELS: Dictionary = {
 const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
 const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
 
+const THEME_KEYS: Array = ["dirt", "fire", "marble", "crystal"]
+const THEME_LABELS: Dictionary = {
+	"dirt": "Земля", "fire": "Огонь", "marble": "Мрамор", "crystal": "Кристалл",
+}
+
 const SKILL_KEYS: Array = [
 	"climber", "floater", "bomber", "blocker", "builder", "basher", "miner", "digger"]
 const SKILL_LABELS: Dictionary = {
@@ -55,6 +60,7 @@ var screens_h: int = 1
 var tool: Tool = Tool.DIRT
 var brush_radius: float = 12.0
 var level_name: String = "Мой уровень"
+var theme_name: String = "dirt"
 var level_id: String = ""
 var save_path: String = ""
 var total_lemmings: int = 10
@@ -82,6 +88,7 @@ var _mouse_panning: bool = false
 
 var _params_panel: PanelContainer = null
 var _name_edit: LineEdit = null
+var _theme_btn: OptionButton = null
 var _spins: Dictionary = {}
 var _toast: Label = null
 
@@ -111,6 +118,7 @@ func _init_blank_canvas() -> void:
 	terrain = PixelTerrain.new()
 	terrain.name = "Canvas"
 	terrain.live_grass = true
+	terrain.theme_name = theme_name
 	$World.add_child(terrain)
 	$World.move_child(terrain, 0)
 	terrain.build_blank(Rect2i(Vector2i.ZERO, canvas_px()))
@@ -357,6 +365,7 @@ func _collect_meta() -> Dictionary:
 		"time_limit": time_limit,
 		"release_rate": release_rate,
 		"skill_counts": skill_counts,
+		"theme": theme_name,
 		"entrance_pos": [entrance.position.x, entrance.position.y],
 		"entrance_direction": 1,
 		"exit_pos": [level_exit.position.x, level_exit.position.y],
@@ -382,6 +391,8 @@ func _load_from(path: String) -> void:
 	save_path = path
 	level_id = str(d.get("id", ""))
 	level_name = str(d.get("name", level_name))
+	theme_name = str(d.get("theme", theme_name))
+	terrain.set_theme(theme_name)
 	total_lemmings = int(d.get("total_lemmings", total_lemmings))
 	save_required = int(d.get("save_required", save_required))
 	time_limit = int(d.get("time_limit", time_limit))
@@ -644,6 +655,23 @@ func _build_params_panel(ui: CanvasLayer) -> void:
 	_name_edit.text_changed.connect(func(t: String): level_name = t)
 	name_row.add_child(_name_edit)
 
+	# Visual theme — applied to the live canvas immediately (WYSIWYG).
+	var theme_row := HBoxContainer.new()
+	box.add_child(theme_row)
+	var theme_label := Label.new()
+	theme_label.text = "Тема"
+	theme_label.custom_minimum_size = Vector2(180, 0)
+	theme_row.add_child(theme_label)
+	_theme_btn = OptionButton.new()
+	_theme_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for k in THEME_KEYS:
+		_theme_btn.add_item(THEME_LABELS[k])
+	_theme_btn.selected = THEME_KEYS.find(theme_name)
+	_theme_btn.item_selected.connect(func(i: int):
+		theme_name = THEME_KEYS[i]
+		terrain.set_theme(theme_name))
+	theme_row.add_child(_theme_btn)
+
 	_add_spin(box, "Ширина (экранов)", 1, MAX_SCREENS_W, screens_w,
 		func(v: float): _set_canvas_screens(int(v), screens_h))
 	_add_spin(box, "Высота (экранов)", 1, MAX_SCREENS_H, screens_h,
@@ -685,6 +713,7 @@ func _toggle_params() -> void:
 	_params_panel.visible = not _params_panel.visible
 	if _params_panel.visible:
 		_name_edit.text = level_name
+		_theme_btn.selected = THEME_KEYS.find(theme_name)
 		_spins["Ширина (экранов)"].value = screens_w
 		_spins["Высота (экранов)"].value = screens_h
 		_spins["Леммингов"].value = total_lemmings
