@@ -14,6 +14,14 @@ var total_lemmings: int = 0
 var saved_count: int = 0
 var spawned_count: int = 0
 var dead_count: int = 0
+# Simulation tick counter (US-3.1): advances only while PLAYING, so replay
+# events recorded against it land on the exact same physics tick on playback.
+var sim_tick: int = 0
+
+
+func _physics_process(_delta: float) -> void:
+	if current_state == GameState.PLAYING:
+		sim_tick += 1
 
 
 func set_state(new_state: GameState) -> void:
@@ -32,6 +40,7 @@ func start_level(level_id: String, total: int = 0) -> void:
 	saved_count = 0
 	spawned_count = 0
 	dead_count = 0
+	sim_tick = 0
 	set_state(GameState.PLAYING)
 	level_started.emit(level_id)
 
@@ -80,4 +89,5 @@ func reset() -> void:
 	saved_count = 0
 	spawned_count = 0
 	dead_count = 0
+	sim_tick = 0
 	set_state(GameState.MENU)

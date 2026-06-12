@@ -104,11 +104,44 @@ func list_custom_levels() -> Array:
 				"path": path,
 				"id": str(d.get("id", fname.get_basename())),
 				"name": str(d.get("name", fname.get_basename())),
+				# Stamped by a winning test-play; saving from the editor clears
+				# it (the meta is rebuilt), so edits always need a fresh proof.
+				"verified": bool(d.get("verified", false)),
 			})
 		fname = dir.get_next()
 	dir.list_dir_end()
 	result.sort_custom(func(a, b): return str(a["name"]) < str(b["name"]))
 	return result
+
+
+# ── Replays (US-3.1) ────────────────────────────────────────────────────────
+# A replay is the event log of one attempt: [{t, type, ...}] keyed by the
+# simulation tick. Stored one per level id — the latest finished attempt.
+
+const REPLAYS_DIR: String = "user://replays/"
+
+
+func save_replay(level_id: String, events: Array) -> bool:
+	if level_id == "":
+		return false
+	DirAccess.make_dir_recursive_absolute(REPLAYS_DIR)
+	var file := FileAccess.open(REPLAYS_DIR + level_id + ".json", FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(JSON.stringify({"level_id": level_id, "events": events}))
+	file.close()
+	return true
+
+
+func load_replay(level_id: String) -> Array:
+	var path: String = REPLAYS_DIR + level_id + ".json"
+	if not FileAccess.file_exists(path):
+		return []
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(path)) != OK or not (json.data is Dictionary):
+		return []
+	var events = (json.data as Dictionary).get("events", [])
+	return events if events is Array else []
 
 
 func delete_custom_level(path: String) -> void:

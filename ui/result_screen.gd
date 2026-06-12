@@ -4,6 +4,9 @@ extends Control
 signal retry_pressed()
 signal menu_pressed()
 signal next_pressed()
+signal replay_pressed()
+
+var replay_button: Button = null
 
 @onready var title_label: Label = $Panel/VBox/TitleLabel
 @onready var stats_label: Label = $Panel/VBox/StatsLabel
@@ -16,6 +19,12 @@ func _ready() -> void:
 	next_button.pressed.connect(func(): next_pressed.emit())
 	retry_button.pressed.connect(func(): retry_pressed.emit())
 	menu_button.pressed.connect(func(): menu_pressed.emit())
+	# Watch the finished attempt again (US-3.1).
+	replay_button = Button.new()
+	replay_button.text = "Реплей"
+	replay_button.custom_minimum_size = retry_button.custom_minimum_size
+	replay_button.pressed.connect(func(): replay_pressed.emit())
+	retry_button.get_parent().add_child(replay_button)
 	visible = false
 
 

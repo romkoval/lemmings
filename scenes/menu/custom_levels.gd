@@ -31,7 +31,8 @@ func _refresh() -> void:
 		row.add_theme_constant_override("separation", 8)
 		list_container.add_child(row)
 		var name_label := Label.new()
-		name_label.text = str(info["name"])
+		# "✓" = the author beat their own level in a test-play (US-4.2 proof).
+		name_label.text = ("✓ " if bool(info.get("verified", false)) else "") + str(info["name"])
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.add_theme_font_size_override("font_size", 22)
 		name_label.clip_text = true
