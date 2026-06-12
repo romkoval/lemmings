@@ -17,7 +17,7 @@ const SCREEN_PX := Vector2i(720, 1280)
 const MAX_SCREENS_W: int = 4
 const MAX_SCREENS_H: int = 3
 
-enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT, WATER, FIRE }
+enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT, WATER, FIRE, TRAP_CRUSHER, TRAP_CLAMP }
 
 const TOOL_LABELS: Dictionary = {
 	Tool.DIRT: "Грунт",
@@ -27,6 +27,8 @@ const TOOL_LABELS: Dictionary = {
 	Tool.EXIT: "Выход",
 	Tool.WATER: "Вода",
 	Tool.FIRE: "Огонь",
+	Tool.TRAP_CRUSHER: "Пресс",
+	Tool.TRAP_CLAMP: "Капкан",
 }
 const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
 const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
@@ -60,11 +62,13 @@ var release_rate: int = 50
 var skill_counts: Dictionary = {}
 
 var hazards: Array = []   # HazardZone nodes living in $World, saved with the level
+var traps: Array = []     # Trap nodes living in $World, saved with the level
 
 var _has_content: bool = false
 var _painting: bool = false
 var _active_hazard: HazardZone = null   # the zone being dragged out right now
 var _hazard_anchor: Vector2 = Vector2.ZERO
+var _active_trap: Trap = null           # the trap being placed/moved right now
 var _last_stroke: Vector2 = Vector2.INF
 var _cursor_world: Vector2 = Vector2.INF
 var _touches: Dictionary = {}
@@ -184,6 +188,17 @@ func _stroke_at(world: Vector2) -> void:
 				_active_hazard.zone_size = hr.size
 			_last_stroke = p
 			return
+		Tool.TRAP_CRUSHER, Tool.TRAP_CLAMP:
+			# Press drops a trap centred under the finger; dragging fine-tunes
+			# its position until release.
+			var ttype := Trap.TrapType.CRUSHER if tool == Tool.TRAP_CRUSHER else Trap.TrapType.CLAMP
+			var at: Vector2 = (p - Trap.TRIGGER_SIZE * 0.5).round()
+			if _active_trap == null:
+				_active_trap = _add_trap(ttype, at)
+			else:
+				_active_trap.position = at
+			_last_stroke = p
+			return
 		_:
 			pass
 	# Brush stroke: stamp circles from the last point to this one so fast drags
@@ -216,13 +231,26 @@ func _add_hazard(htype: HazardZone.HazardType, rect: Rect2) -> HazardZone:
 	return zone
 
 
-# The eraser doubles as the hazard remover — any stamp landing on a zone
-# deletes the whole zone (zones are placed objects, not pixels).
+func _add_trap(ttype: Trap.TrapType, at: Vector2) -> Trap:
+	var trap := Trap.new()
+	trap.trap_type = ttype
+	trap.position = at
+	$World.add_child(trap)
+	traps.append(trap)
+	return trap
+
+
+# The eraser doubles as the hazard/trap remover — any stamp landing on a zone
+# or trap deletes the whole object (they are placed objects, not pixels).
 func _erase_hazards_at(p: Vector2) -> void:
 	for hz in hazards.duplicate():
 		if (hz as HazardZone).rect_px().grow(brush_radius * 0.5).has_point(p):
 			hazards.erase(hz)
 			hz.queue_free()
+	for tr in traps.duplicate():
+		if (tr as Trap).rect_px().grow(brush_radius * 0.5).has_point(p):
+			traps.erase(tr)
+			tr.queue_free()
 
 
 # ── Input: paint / pan / zoom ────────────────────────────────────────────────
@@ -246,6 +274,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_painting = false
 				_gesture = false
 				_active_hazard = null
+				_active_trap = null
 	elif event is InputEventScreenDrag:
 		var sd := event as InputEventScreenDrag
 		_touches[sd.index] = sd.position
@@ -263,6 +292,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_stroke_at(get_global_mouse_position())
 			else:
 				_active_hazard = null
+				_active_trap = null
 		elif mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			_mouse_panning = mb.pressed
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
@@ -328,6 +358,10 @@ func _collect_meta() -> Dictionary:
 			"type": HazardZone.TYPE_NAMES[(h as HazardZone).hazard_type],
 			"rect": [h.position.x, h.position.y, h.zone_size.x, h.zone_size.y],
 		}),
+		"traps": traps.map(func(t): return {
+			"type": Trap.TYPE_NAMES[(t as Trap).trap_type],
+			"pos": [t.position.x, t.position.y],
+		}),
 	}
 
 
@@ -367,6 +401,15 @@ func _load_from(path: String) -> void:
 			var hr: Array = hz["rect"]
 			_add_hazard(HazardZone.type_from_name(str(hz.get("type", "water"))),
 				Rect2(float(hr[0]), float(hr[1]), float(hr[2]), float(hr[3])))
+	for tr in traps:
+		tr.queue_free()
+	traps.clear()
+	_active_trap = null
+	for tr in d.get("traps", []):
+		if tr is Dictionary and tr.get("pos", null) is Array and (tr["pos"] as Array).size() == 2:
+			var tp: Array = tr["pos"]
+			_add_trap(Trap.type_from_name(str(tr.get("type", "crusher"))),
+				Vector2(float(tp[0]), float(tp[1])))
 	_load_terrain(d, path.get_base_dir())
 
 
@@ -493,10 +536,16 @@ func _build_ui() -> void:
 	bottom.anchor_bottom = 1.0
 	bottom.offset_top = -84
 	ui.add_child(bottom)
+	# The tool row outgrew a portrait screen — let it scroll horizontally.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bottom.add_child(scroll)
 	var tool_box := HBoxContainer.new()
 	tool_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	tool_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tool_box.add_theme_constant_override("separation", 6)
-	bottom.add_child(tool_box)
+	scroll.add_child(tool_box)
 	var group := ButtonGroup.new()
 	for t in TOOL_LABELS:
 		var b := Button.new()

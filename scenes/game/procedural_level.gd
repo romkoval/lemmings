@@ -102,6 +102,15 @@ func _apply_data(d: Dictionary) -> void:
 			zone.zone_size = Vector2(float(hr[2]), float(hr[3]))
 			add_child(zone)
 
+	# Triggered traps: {"type": "crusher"|"clamp", "pos": [x, y]}.
+	for tr in d.get("traps", []):
+		if tr is Dictionary and tr.get("pos", null) is Array and (tr["pos"] as Array).size() == 2:
+			var tp: Array = tr["pos"]
+			var trap := Trap.new()
+			trap.trap_type = Trap.type_from_name(str(tr.get("type", "crusher")))
+			trap.position = Vector2(float(tp[0]), float(tp[1]))
+			add_child(trap)
+
 	# The scrollable playfield (editor levels can be several screens wide/tall).
 	var pf = d.get("playfield", null)
 	if pf is Array and pf.size() == 4:
