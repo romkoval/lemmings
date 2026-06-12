@@ -128,8 +128,12 @@ func _load_level_scene(scene_path: String) -> void:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
 		camera.setup_bounds(current_level, focus)
 	hud.bind_minimap(current_level, camera)
-	# Each level gets its own tune from the remake pack (restart keeps it going).
-	AudioManager.play_level_music(current_level.level_id)
+	# Each level gets its own tune from the remake pack (restart keeps it going);
+	# a level can pin a named track instead (themed levels — e.g. inferno).
+	if current_level.music != "":
+		AudioManager.play_music(current_level.music)
+	else:
+		AudioManager.play_level_music(current_level.level_id)
 	_show_hint(current_level.hint)
 
 

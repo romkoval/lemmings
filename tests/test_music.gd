@@ -11,7 +11,7 @@ func after_each() -> void:
 
 
 func test_all_pack_tracks_exist_and_are_ogg() -> void:
-	var names: Array[String] = ["theme"]
+	var names: Array[String] = ["theme", "inferno"]
 	for i in range(1, AudioManager.LEVEL_TRACKS + 1):
 		names.append("remake_%02d" % i)
 	for n in names:
@@ -60,3 +60,27 @@ func test_menu_theme_prefers_the_ogg_remake() -> void:
 	AudioManager.play_music("theme")
 	assert_true(AudioManager.music_player.stream is AudioStreamOggVorbis,
 		"theme.ogg outranks the placeholder theme.wav")
+
+
+func test_level_can_pin_a_named_track() -> void:
+	# Themed levels (e.g. the hell set) pin their tune via "music" in the JSON
+	# instead of taking the rotation pick.
+	var data: Dictionary = {
+		"id": "_gut_music_level", "name": "music gut", "custom": true,
+		"total_lemmings": 1, "save_required": 1, "time_limit": 120, "release_rate": 50,
+		"skill_counts": {"climber": 0, "floater": 0, "bomber": 0, "blocker": 0,
+			"builder": 0, "basher": 0, "miner": 0, "digger": 1},
+		"entrance_pos": [80, 398], "entrance_direction": 1, "exit_pos": [620, 446],
+		"terrain_rects": [{"x": 0, "y": 29, "w": 45, "h": 4}],
+		"music": "inferno",
+	}
+	var path: String = "user://custom_levels/_gut_music_level.json"
+	LevelManager.save_level_json(path, data)
+	var game: Game = (load("res://scenes/game/game.tscn") as PackedScene).instantiate() as Game
+	game.initial_level_path = path
+	add_child_autoqfree(game)
+	await wait_physics_frames(2)
+	assert_true(AudioManager.music_player.stream.resource_path.ends_with("inferno.ogg"),
+		"level override wins over the rotation")
+	LevelManager.delete_custom_level(path)
+	GameManager.reset()

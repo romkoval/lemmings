@@ -76,6 +76,7 @@ MODES = {
     "minor":      [0, 2, 3, 5, 7, 8, 10],
     "dorian":     [0, 2, 3, 5, 7, 9, 10],
     "mixolydian": [0, 2, 4, 5, 7, 9, 10],
+    "phrygian":   [0, 1, 3, 5, 7, 8, 10],
 }
 
 
@@ -421,6 +422,13 @@ SONGS = [
          motif=[(Q, 4), (Q, 3), (Q, 2), (E, 1), (E, 2), (H, 0),
                 (Q, 2), (Q, 4), (H, 4)],
          bass="roots", arp="up8", drums="none", lead_wave="tri"),
+    # «Инферно»: фригийский лад, полутоновый «оскал» ♭II, дьявольский ход на
+    # уменьшённое v° — трек для адских уровней (JSON: "music": "inferno").
+    dict(name="inferno", seed=666, bpm=140, key=52, mode="phrygian", target_sec=75,
+         prog=[0, 1, 0, 6, 0, 1, 4, 0],
+         motif=[(E, 0), (E, 0), (E, 1), (E, 0), (Q, 4), (E, 3), (E, 4),
+                (E, 5), (E, 4), (E, 3), (E, 1), (Q, 0), (E, 1), (E, 0)],
+         bass="pulse8", arp="pad", drums="full", lead_wave="saw"),
     # Заглавная тема меню.
     dict(name="theme", seed=100, bpm=120, key=62, mode="major", target_sec=42,
          prog=[0, 3, 4, 0, 5, 3, 4, 0],
