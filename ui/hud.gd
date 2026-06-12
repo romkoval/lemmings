@@ -7,8 +7,16 @@ signal skill_chosen(skill_name: String)
 signal time_expired()
 signal zoom_in_pressed()
 signal zoom_out_pressed()
+signal release_rate_changed(rate: int)
 
 const FAST_SPEED: float = 3.0
+# Release-rate control: can never drop below the level's starting rate (the
+# classic rule — the author's minimum is part of the puzzle), capped at 99.
+const RATE_MAX: int = 99
+# Hold-to-repeat for the −/+ buttons: first repeat after the delay, then a
+# steady stream — riffling across the whole range takes about two seconds.
+const RATE_REPEAT_DELAY: float = 0.35
+const RATE_REPEAT_INTERVAL: float = 0.05
 # Minimum gap (base px) kept between any control and the screen edge, on top of
 # the device safe-area inset — so controls never merge with the phone's bezel,
 # notch or rounded corners.
@@ -29,10 +37,18 @@ const BOTTOM_BAR_HEIGHT: float = 112.0
 @onready var zoom_in_button: Button = $ZoomControls/ZoomIn
 @onready var zoom_out_button: Button = $ZoomControls/ZoomOut
 @onready var minimap: Control = $Minimap
+@onready var release_controls: Control = $ReleaseControls
+@onready var rate_plus_button: Button = $ReleaseControls/RatePlus
+@onready var rate_minus_button: Button = $ReleaseControls/RateMinus
+@onready var rate_label: Label = $ReleaseControls/RateLabel
 
 var time_remaining: float = 0.0
 var time_active: bool = false
 var required_saved: int = 0
+var release_rate: int = 50
+var min_release_rate: int = 1
+var _rate_hold_dir: int = 0
+var _rate_hold_time: float = 0.0
 
 
 func _ready() -> void:
@@ -42,7 +58,12 @@ func _ready() -> void:
 	# time_scale / tick rate are global state — never leak back to the menus.
 	tree_exiting.connect(func(): _set_speed(1.0))
 	skill_panel.skill_selected.connect(func(name: String): skill_chosen.emit(name))
-	for label in [saved_label, spawned_label, timer_label]:
+	rate_plus_button.button_down.connect(func(): _on_rate_button_down(1))
+	rate_minus_button.button_down.connect(func(): _on_rate_button_down(-1))
+	for rb in [rate_plus_button, rate_minus_button]:
+		rb.button_up.connect(func(): _rate_hold_dir = 0)
+		rb.add_theme_font_size_override("font_size", 30)
+	for label in [saved_label, spawned_label, timer_label, rate_label]:
 		if label:
 			label.add_theme_font_size_override("font_size", 22)
 			label.add_theme_color_override("font_color", Color.WHITE)
@@ -96,6 +117,12 @@ func _apply_safe_area() -> void:
 	zoom_controls.offset_bottom = -(bottom + BOTTOM_BAR_HEIGHT + 10.0)
 	zoom_controls.offset_top = zoom_controls.offset_bottom - 128.0
 
+	# Release-rate −/+ mirrors the zoom column on the left inset.
+	release_controls.offset_left = left
+	release_controls.offset_right = left + 56.0
+	release_controls.offset_bottom = -(bottom + BOTTOM_BAR_HEIGHT + 10.0)
+	release_controls.offset_top = release_controls.offset_bottom - 152.0
+
 	# Minimap: top-right, just under the top bar (size set once a level is bound).
 	if minimap:
 		minimap.offset_right = -right
@@ -121,15 +148,39 @@ func _process(delta: float) -> void:
 			time_remaining = 0
 			time_active = false
 			time_expired.emit()
+	if _rate_hold_dir != 0:
+		# Held −/+ keeps stepping: first repeat after the delay, then one step
+		# per interval (the while-loop catches up after a slow frame).
+		_rate_hold_time += delta
+		while _rate_hold_time >= RATE_REPEAT_DELAY + RATE_REPEAT_INTERVAL:
+			_rate_hold_time -= RATE_REPEAT_INTERVAL
+			_change_rate(_rate_hold_dir)
 	_update_labels()
 
 
-func configure(total_lemmings: int, required: int, time_limit_sec: int, skill_counts: Dictionary) -> void:
+func configure(total_lemmings: int, required: int, time_limit_sec: int, skill_counts: Dictionary, start_release_rate: int = 50) -> void:
 	required_saved = required
 	time_remaining = float(time_limit_sec)
 	time_active = true
+	min_release_rate = clampi(start_release_rate, 1, RATE_MAX)
+	release_rate = min_release_rate
+	_rate_hold_dir = 0
 	skill_panel.update_counts(skill_counts)
 	_update_labels()
+
+
+func _on_rate_button_down(dir: int) -> void:
+	_change_rate(dir)
+	_rate_hold_dir = dir
+	_rate_hold_time = 0.0
+
+
+func _change_rate(delta_steps: int) -> void:
+	var new_rate: int = clampi(release_rate + delta_steps, min_release_rate, RATE_MAX)
+	if new_rate == release_rate:
+		return
+	release_rate = new_rate
+	release_rate_changed.emit(release_rate)
 
 
 func _on_fast_toggled(on: bool) -> void:
@@ -163,3 +214,5 @@ func _update_labels() -> void:
 		var m: int = int(time_remaining) / 60
 		var s: int = int(time_remaining) % 60
 		timer_label.text = "%02d:%02d" % [m, s]
+	if rate_label:
+		rate_label.text = str(release_rate)

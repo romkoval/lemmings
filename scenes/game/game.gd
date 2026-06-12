@@ -52,6 +52,7 @@ func _ready() -> void:
 	hud.skill_chosen.connect(_on_skill_chosen)
 	hud.zoom_in_pressed.connect(func(): camera.zoom_in())
 	hud.zoom_out_pressed.connect(func(): camera.zoom_out())
+	hud.release_rate_changed.connect(_on_release_rate_changed)
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
 	hud.time_expired.connect(_on_time_expired)
 	GameManager.all_lemmings_resolved.connect(_on_all_resolved)
@@ -102,6 +103,7 @@ func load_level(scene_path: String) -> void:
 		current_level.save_required,
 		current_level.time_limit,
 		skill_manager.skill_counts,
+		current_level.release_rate,
 	)
 	GameManager.start_level(current_level.level_id, current_level.total_lemmings)
 	# Frame the camera on the level: clamp panning to the terrain and centre on
@@ -242,17 +244,9 @@ func _set_highlight(lem: Lemming) -> void:
 
 
 func _find_lemming_near(pos: Vector2, max_dist: float) -> Lemming:
-	var best: Lemming = null
-	var best_d: float = max_dist
-	for n in get_tree().get_nodes_in_group("lemmings"):
-		var lem := n as Lemming
-		if lem == null:
-			continue
-		var d: float = lem.global_position.distance_to(pos)
-		if d < best_d:
-			best_d = d
-			best = lem
-	return best
+	# Crowd-aware pick (US-1.2): eligibility for the selected skill, walkers
+	# before workers, direction toward the tap — see SkillManager.pick_target.
+	return skill_manager.pick_target(get_tree().get_nodes_in_group("lemmings"), pos, max_dist)
 
 
 func _on_skill_chosen(skill_name: String) -> void:
@@ -273,6 +267,11 @@ func _on_pause() -> void:
 
 func _on_nuke() -> void:
 	lemming_manager.nuke_all()
+
+
+func _on_release_rate_changed(rate: int) -> void:
+	if current_level and current_level.entrance:
+		current_level.entrance.set_release_rate(rate)
 
 
 func _on_all_resolved() -> void:

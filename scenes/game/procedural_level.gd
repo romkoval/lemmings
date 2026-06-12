@@ -92,6 +92,16 @@ func _apply_data(d: Dictionary) -> void:
 	if d.get("add_depth", false):
 		_add_depth()
 
+	# Death zones (water/fire): {"type": "water"|"fire", "rect": [x, y, w, h]}.
+	for hz in d.get("hazards", []):
+		if hz is Dictionary and hz.get("rect", null) is Array and (hz["rect"] as Array).size() == 4:
+			var hr: Array = hz["rect"]
+			var zone := HazardZone.new()
+			zone.hazard_type = HazardZone.type_from_name(str(hz.get("type", "water")))
+			zone.position = Vector2(float(hr[0]), float(hr[1]))
+			zone.zone_size = Vector2(float(hr[2]), float(hr[3]))
+			add_child(zone)
+
 	# The scrollable playfield (editor levels can be several screens wide/tall).
 	var pf = d.get("playfield", null)
 	if pf is Array and pf.size() == 4:
