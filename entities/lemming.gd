@@ -40,6 +40,8 @@ const FLOAT_FALL_PER_FRAME: float = 0.6
 const FLOAT_DRIFT_PER_FRAME: float = 0.25
 const CLIMB_PX_PER_FRAME: float = 0.5   # 30 px/sec
 const BOMB_FUSE_SECONDS: float = 5.0
+# The doomed "Oh no!" shrug between the fuse running out and the blast.
+const OH_NO_SECONDS: float = 0.8
 const EXPLOSION_RADIUS_PX: float = 24.0
 # Fallback when no level is bound: anything past the bottom of the default
 # playfield is lost (ТЗ §1.3). With a level, its kill_plane_y() is used so tall
@@ -56,6 +58,7 @@ var fall_distance: float = 0.0
 var is_floater: bool = false
 var is_climber: bool = false
 var bomb_timer: float = 0.0
+var _shrug_timer: float = -1.0   # ≥0 while the "Oh no!" shrug is playing
 var active_skill_node: RefCounted = null
 var lemming_id: int = -1
 var highlighted: bool = false
@@ -300,8 +303,7 @@ func _process_skill(_delta: float) -> void:
 
 
 func _process_exploding(delta: float) -> void:
-	bomb_timer -= delta
-	# Keep obeying gravity while the fuse burns; walk is frozen.
+	# Keep obeying gravity while the fuse burns and during the shrug.
 	var fx: int = feet_x()
 	var fy: int = feet_y()
 	if not _solid(fx, fy):
@@ -310,18 +312,29 @@ func _process_exploding(delta: float) -> void:
 				break
 			fy += 1
 		_set_feet(fx, fy)
+	if _shrug_timer >= 0.0:
+		# "Oh no!" — the doomed shrug between fuse end and the blast.
+		_shrug_timer -= delta
+		if sprite:
+			var p: float = fposmod(_shrug_timer, 0.16)
+			sprite.modulate = Color(1.0, 0.3, 0.3) if p > 0.08 else Color(1.0, 1.0, 0.5)
+		if _shrug_timer <= 0.0:
+			# The crater belongs to the explosion, not to how the fuse was lit —
+			# nuked lemmings (no skill node) must blast terrain exactly like
+			# hand-assigned bombers. Steel survives (carve skips it).
+			var lv: Level = _lv()
+			if lv != null:
+				lv.carve_circle_px(global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)
+			AudioManager.play_sfx("explosion")
+			die("bomb")
+		return
+	bomb_timer -= delta
 	if sprite:
 		var phase: float = fposmod(bomb_timer, 0.5)
 		sprite.modulate = Color(1.0, 0.4, 0.4) if phase > 0.25 else Color(1.0, 1.0, 0.4)
 	if bomb_timer <= 0.0:
-		# The crater belongs to the explosion, not to how the fuse was lit —
-		# nuked lemmings (no skill node) must blast terrain exactly like
-		# hand-assigned bombers. Steel survives (carve skips it).
-		var lv: Level = _lv()
-		if lv != null:
-			lv.carve_circle_px(global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)
-		AudioManager.play_sfx("explosion")
-		die("bomb")
+		_shrug_timer = OH_NO_SECONDS
+		AudioManager.play_sfx("oh_no")
 
 
 # ── Lemming-vs-lemming proximity (no physical collision) ────────────────────
@@ -398,6 +411,7 @@ func assign_skill(skill) -> bool:
 
 func start_bomb_countdown() -> void:
 	bomb_timer = BOMB_FUSE_SECONDS
+	_shrug_timer = -1.0
 	change_state(State.EXPLODING)
 
 
@@ -411,7 +425,9 @@ func mark_saved() -> void:
 func die(cause: String) -> void:
 	lemming_died.emit(self, cause)
 	GameManager.notify_lemming_died()
-	AudioManager.play_sfx("oh_no")
+	# A bomb death already voiced its "oh no" during the shrug and its blast.
+	if cause != "bomb":
+		AudioManager.play_sfx("oh_no")
 	queue_free()
 
 
