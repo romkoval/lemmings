@@ -130,6 +130,55 @@ func _load_level_scene(scene_path: String) -> void:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
 		camera.setup_bounds(current_level, focus)
 	hud.bind_minimap(current_level, camera)
+	_show_hint(current_level.hint)
+
+
+# Onboarding (US-5.2): a one-time dismissible tip over the HUD. Per-level,
+# remembered in the save; the settings screen can turn hints off entirely.
+var _hint_panel: PanelContainer = null
+
+
+func _show_hint(text: String) -> void:
+	if _hint_panel != null:
+		_hint_panel.queue_free()
+		_hint_panel = null
+	if text == "" or replay_mode:
+		return
+	if not bool(SaveManager.settings.get("hints_enabled", true)):
+		return
+	var shown: Dictionary = SaveManager.settings.get("hints_shown", {})
+	if bool(shown.get(GameManager.current_level_id, false)):
+		return
+	_hint_panel = PanelContainer.new()
+	_hint_panel.anchor_left = 0.5
+	_hint_panel.anchor_right = 0.5
+	_hint_panel.offset_left = -310
+	_hint_panel.offset_right = 310
+	_hint_panel.offset_top = 76
+	hud_layer.add_child(_hint_panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	_hint_panel.add_child(box)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 21)
+	box.add_child(lbl)
+	var ok := Button.new()
+	ok.text = "Понятно"
+	ok.custom_minimum_size = Vector2(0, 48)
+	ok.pressed.connect(_dismiss_hint)
+	box.add_child(ok)
+
+
+func _dismiss_hint() -> void:
+	if _hint_panel != null:
+		_hint_panel.queue_free()
+		_hint_panel = null
+	var shown: Dictionary = SaveManager.settings.get("hints_shown", {})
+	shown[GameManager.current_level_id] = true
+	SaveManager.settings["hints_shown"] = shown
+	SaveManager.save_progress()
 
 
 func _physics_process(_delta: float) -> void:

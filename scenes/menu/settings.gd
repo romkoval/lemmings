@@ -23,7 +23,22 @@ func _ready() -> void:
 	sfx_slider.drag_ended.connect(_on_sfx_drag_ended)
 	mute_check.toggled.connect(_on_mute_toggled)
 	back_button.pressed.connect(_on_back)
+	_build_hints_toggle()
 	_build_stats_block()
+
+
+# Onboarding hints on/off (US-5.2).
+func _build_hints_toggle() -> void:
+	var box: VBoxContainer = back_button.get_parent()
+	var check := CheckButton.new()
+	check.text = "Подсказки на уровнях"
+	check.button_pressed = bool(SaveManager.settings.get("hints_enabled", true))
+	check.add_theme_font_size_override("font_size", 22)
+	check.toggled.connect(func(on: bool):
+		SaveManager.settings["hints_enabled"] = on
+		SaveManager.save_progress())
+	box.add_child(check)
+	box.move_child(check, back_button.get_index())
 
 
 # Lifetime statistics (US-3.4), shown under the audio settings.

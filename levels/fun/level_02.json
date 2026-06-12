@@ -8,21 +8,53 @@
   "time_limit": 240,
   "release_rate": 50,
   "skill_counts": {
-    "climber": 0, "floater": 0, "bomber": 0,
-    "blocker": 0, "builder": 0, "basher": 0,
-    "miner": 0, "digger": 5
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 0,
+    "digger": 5
   },
-  "entrance_pos": [80, 398],
+  "entrance_pos": [
+    80,
+    398
+  ],
   "entrance_direction": 1,
-  "exit_pos": [352, 446],
+  "exit_pos": [
+    352,
+    446
+  ],
   "add_depth": false,
   "terrain_rects": [
-    {"x": 0, "y": 26, "w": 45, "h": 2},
-    {"x": 0, "y": 29, "w": 45, "h": 5}
+    {
+      "x": 0,
+      "y": 26,
+      "w": 45,
+      "h": 2
+    },
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 5
+    }
   ],
   "terrain_columns": [
-    {"x": 0, "y": 20, "w": 2, "h": 14},
-    {"x": 43, "y": 20, "w": 2, "h": 14}
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 14
+    },
+    {
+      "x": 43,
+      "y": 20,
+      "w": 2,
+      "h": 14
+    }
   ],
-  "steel_rects": []
+  "steel_rects": [],
+  "hint": "Выберите навык «Копатель» на панели внизу и тапните по леммингу — он выроет шахту вниз. Остальные последуют за ним."
 }

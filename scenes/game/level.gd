@@ -14,6 +14,7 @@ const STEEL_SOURCE: int = 1
 @export var total_lemmings: int = 10
 @export var release_rate: int = 50
 @export var terrain_theme: String = "dirt"   # visual palette: dirt/fire/marble/crystal
+@export var hint: String = ""                # onboarding tip shown once (US-5.2)
 @export var skill_counts: Dictionary = {
 	"climber": 0,
 	"floater": 0,
