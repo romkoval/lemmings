@@ -74,9 +74,19 @@ func is_steel_px(wp: Vector2) -> bool:
 	return pixel_terrain != null and pixel_terrain.is_steel_px(wp)
 
 
-# Carve destructible pixels (steel survives). Returns pixels removed.
-func carve_rect_px(r: Rect2i) -> int:
-	return pixel_terrain.carve_rect(r) if pixel_terrain != null else 0
+# Carve destructible pixels (steel survives; dir = ±1 also respects one-way
+# walls, dir = 0 ignores them). Returns pixels removed.
+func carve_rect_px(r: Rect2i, dir: int = 0) -> int:
+	return pixel_terrain.carve_rect(r, dir) if pixel_terrain != null else 0
+
+
+# Would a directional carve hit steel or an opposing one-way wall?
+func rect_blocks_carve_px(r: Rect2i, dir: int) -> bool:
+	return pixel_terrain != null and pixel_terrain.rect_blocks_carve(r, dir)
+
+
+func oneway_dir_px(wp: Vector2) -> int:
+	return pixel_terrain.oneway_dir_px(wp) if pixel_terrain != null else 0
 
 
 func carve_circle_px(center: Vector2, radius: float) -> int:

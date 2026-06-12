@@ -16,6 +16,12 @@ extends Sprite2D
 const MAT_DIRT: float = 0.0
 const MAT_WOOD: float = 0.5
 const MAT_STEEL: float = 1.0
+# One-way walls (US-1.5): destructible only when worked in the arrow's
+# direction (basher/miner). Direction-less carving (digger, explosions) goes
+# through. Values sit in their own L8 bands clear of dirt/wood/steel, so the
+# byte rounding of a PNG round-trip can never flip a material.
+const MAT_ONEWAY_R: float = 0.2    # carvable left-to-right only (dir = +1)
+const MAT_ONEWAY_L: float = 0.35   # carvable right-to-left only (dir = -1)
 # get_pixel().r >= this counts as solid; ~120/255, slightly below the 0.5
 # midpoint so authored straight edges (which smooth to exactly 0.5) stay solid.
 const SOLID_EPS: float = 0.47
@@ -189,27 +195,68 @@ func is_steel_px(wp: Vector2) -> bool:
 	return _mat.get_pixel(p.x, p.y).r > 0.8 and _mask.get_pixel(p.x, p.y).r >= SOLID_EPS
 
 
+# One-way wall direction at a solid pixel: +1 right-only, -1 left-only, 0 none.
+func oneway_dir_px(wp: Vector2) -> int:
+	var p := _local(wp)
+	if p.x < 0 or p.y < 0 or p.x >= _size.x or p.y >= _size.y:
+		return 0
+	if _mask.get_pixel(p.x, p.y).r < SOLID_EPS:
+		return 0
+	return _oneway_dir(_mat.get_pixel(p.x, p.y).r)
+
+
+static func _oneway_dir(m: float) -> int:
+	if m > 0.12 and m < 0.28:
+		return 1
+	if m >= 0.28 and m < 0.45:
+		return -1
+	return 0
+
+
 # Clip a world-px rect to the mask, returning the local rect.
 func _clip(r: Rect2i) -> Rect2i:
 	return Rect2i(r.position - _origin, r.size).intersection(Rect2i(Vector2i.ZERO, _size))
 
 
-# Remove destructible pixels in the rect. Steel survives. Returns the number of
-# pixels actually carved.
-func carve_rect(r: Rect2i) -> int:
+# Remove destructible pixels in the rect. Steel survives; one-way pixels
+# survive a DIRECTIONAL carve (dir = ±1, basher/miner) going against their
+# arrow. dir = 0 means direction-less (digger, explosions) — goes through
+# one-way walls, classic behaviour. Returns the number of pixels carved.
+func carve_rect(r: Rect2i, dir: int = 0) -> int:
 	var rr := _clip(r)
 	var carved := 0
 	for y in range(rr.position.y, rr.end.y):
 		for x in range(rr.position.x, rr.end.x):
 			if _mask.get_pixel(x, y).r < SOLID_EPS:
 				continue
-			if _mat.get_pixel(x, y).r > 0.8:
+			var m: float = _mat.get_pixel(x, y).r
+			if m > 0.8:
 				continue
+			if dir != 0:
+				var ow: int = _oneway_dir(m)
+				if ow != 0 and ow != dir:
+					continue
 			_mask.set_pixel(x, y, Color.BLACK)
 			carved += 1
 	if carved > 0:
 		_dirty = true
 	return carved
+
+
+# True if a directional carve of this rect would hit an impassable pixel:
+# steel, or a one-way wall pointing against `dir`. Bashers/miners use it to
+# stop swinging, the same way they stop at steel.
+func rect_blocks_carve(r: Rect2i, dir: int) -> bool:
+	var rr := _clip(r)
+	for y in range(rr.position.y, rr.end.y):
+		for x in range(rr.position.x, rr.end.x):
+			var m: float = _mat.get_pixel(x, y).r
+			if m > 0.8:
+				return true
+			var ow: int = _oneway_dir(m)
+			if ow != 0 and ow != dir and _mask.get_pixel(x, y).r >= SOLID_EPS:
+				return true
+	return false
 
 
 # `force` (level editor only) erases steel as well.

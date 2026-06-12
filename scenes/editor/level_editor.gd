@@ -17,7 +17,7 @@ const SCREEN_PX := Vector2i(720, 1280)
 const MAX_SCREENS_W: int = 4
 const MAX_SCREENS_H: int = 3
 
-enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT, WATER, FIRE, TRAP_CRUSHER, TRAP_CLAMP }
+enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT, WATER, FIRE, TRAP_CRUSHER, TRAP_CLAMP, ONEWAY_R, ONEWAY_L }
 
 const TOOL_LABELS: Dictionary = {
 	Tool.DIRT: "Грунт",
@@ -29,6 +29,8 @@ const TOOL_LABELS: Dictionary = {
 	Tool.FIRE: "Огонь",
 	Tool.TRAP_CRUSHER: "Пресс",
 	Tool.TRAP_CLAMP: "Капкан",
+	Tool.ONEWAY_R: "Стена →",
+	Tool.ONEWAY_L: "Стена ←",
 }
 const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
 const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
@@ -154,12 +156,14 @@ func _draw() -> void:
 		draw_line(Vector2(sx * SCREEN_PX.x, 0), Vector2(sx * SCREEN_PX.x, canvas_px().y), Color(1, 1, 1, 0.12))
 	for sy in range(1, screens_h):
 		draw_line(Vector2(0, sy * SCREEN_PX.y), Vector2(canvas_px().x, sy * SCREEN_PX.y), Color(1, 1, 1, 0.12))
-	if _cursor_world != Vector2.INF and tool in [Tool.DIRT, Tool.STEEL, Tool.ERASE]:
+	if _cursor_world != Vector2.INF and tool in [Tool.DIRT, Tool.STEEL, Tool.ERASE, Tool.ONEWAY_R, Tool.ONEWAY_L]:
 		var col := Color(1, 1, 1, 0.6)
 		if tool == Tool.STEEL:
 			col = Color(0.7, 0.75, 0.85, 0.8)
 		elif tool == Tool.ERASE:
 			col = Color(1.0, 0.5, 0.4, 0.8)
+		elif tool in [Tool.ONEWAY_R, Tool.ONEWAY_L]:
+			col = Color(0.93, 0.78, 0.2, 0.8)
 		draw_arc(_cursor_world, brush_radius, 0.0, TAU, 40, col, 1.5)
 
 
@@ -214,6 +218,12 @@ func _stroke_at(world: Vector2) -> void:
 				_has_content = true
 			Tool.STEEL:
 				terrain.fill_circle(q, brush_radius, PixelTerrain.MAT_STEEL, true)
+				_has_content = true
+			Tool.ONEWAY_R:
+				terrain.fill_circle(q, brush_radius, PixelTerrain.MAT_ONEWAY_R, true)
+				_has_content = true
+			Tool.ONEWAY_L:
+				terrain.fill_circle(q, brush_radius, PixelTerrain.MAT_ONEWAY_L, true)
 				_has_content = true
 			Tool.ERASE:
 				terrain.carve_circle(q, brush_radius, true)

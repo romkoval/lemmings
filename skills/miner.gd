@@ -44,10 +44,11 @@ func tick(lemming: Lemming) -> void:
 	# step descends into.
 	var x0: int = fx + 1 if lemming.direction > 0 else fx - 1 - POCKET_W
 	var pocket := Rect2i(x0, fy - (POCKET_H - 5), POCKET_W, POCKET_H)
-	if level.rect_has_steel_px(pocket):
+	# Steel or a one-way wall pointing against us — stop swinging.
+	if level.rect_blocks_carve_px(pocket, lemming.direction):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	var carved: int = level.carve_rect_px(pocket)
+	var carved: int = level.carve_rect_px(pocket, lemming.direction)
 	if carved == 0:
 		lemming.change_state(Lemming.State.WALKING)
 		return

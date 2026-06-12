@@ -24,6 +24,7 @@ uniform vec3 wood_seam   : source_color = vec3(0.30, 0.18, 0.07);
 uniform vec3 steel_light : source_color = vec3(0.66, 0.69, 0.74);
 uniform vec3 steel_dark  : source_color = vec3(0.42, 0.45, 0.51);
 uniform vec3 steel_seam  : source_color = vec3(0.24, 0.26, 0.31);
+uniform vec3 oneway_col  : source_color = vec3(0.93, 0.78, 0.20);
 
 const float EPS = 0.47; // must match PixelTerrain.SOLID_EPS
 
@@ -92,8 +93,8 @@ void fragment() {
 		col = dirt_light;
 	}
 
-	// ── Wood (builder planks) ──
-	if (mat > 0.25 && mat < 0.75) {
+	// ── Wood (builder planks): band around 0.5 ──
+	if (mat > 0.45 && mat < 0.7) {
 		float grain = vnoise(vec2(wpos.x * 0.6, wpos.y * 2.1));
 		float row = floor(wpos.y / 8.0);
 		float seam_h = step(mod(wpos.y, 8.0), 1.0);
@@ -101,8 +102,16 @@ void fragment() {
 		col = mix(wood_light, wood_dark, grain);
 		col = mix(col, wood_seam, max(seam_h, seam_v));
 	}
+	// ── One-way walls (0.2 right / 0.35 left): dirt base + chevron arrows ──
+	else if (mat > 0.12 && mat < 0.45) {
+		// '>' points where x ≡ -|dy| (mod period); flip the sign for '<'.
+		float ow = (mat < 0.28) ? 1.0 : -1.0;
+		float chev = step(mod(wpos.x + ow * abs(mod(wpos.y, 12.0) - 6.0), 16.0), 3.5);
+		col = mix(col, dirt_deep, 0.35);
+		col = mix(col, oneway_col, chev * 0.9);
+	}
 	// ── Steel plates ──
-	else if (mat >= 0.75) {
+	else if (mat >= 0.85) {
 		float plate = vnoise(wpos / 11.0);
 		float seam = max(step(mod(wpos.x, 16.0), 1.0), step(mod(wpos.y, 16.0), 1.0));
 		col = mix(steel_light, steel_dark, plate);
