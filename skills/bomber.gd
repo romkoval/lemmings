@@ -1,7 +1,8 @@
 class_name BomberSkill
 extends BaseSkill
 
-const EXPLOSION_RADIUS_PX: float = 24.0
+# Lights the fuse; the explosion itself (crater carving, death) lives in
+# Lemming._process_exploding so nuked lemmings blast terrain identically.
 
 
 func get_skill_name() -> String:
@@ -14,11 +15,3 @@ func can_apply(lemming: Lemming) -> bool:
 
 func apply(lemming: Lemming) -> void:
 	lemming.start_bomb_countdown()
-
-
-func detonate(lemming: Lemming) -> void:
-	var level: Level = _get_level(lemming)
-	if level == null:
-		return
-	# Round crater centred on the body; steel survives the blast.
-	level.carve_circle_px(lemming.global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)

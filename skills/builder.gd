@@ -32,6 +32,10 @@ func can_apply(lemming: Lemming) -> bool:
 	return lemming.current_state == Lemming.State.WALKING
 
 
+func needs_tick() -> bool:
+	return true
+
+
 func apply(lemming: Lemming) -> void:
 	planks_laid = 0
 	_moving = false

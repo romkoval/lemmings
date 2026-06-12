@@ -40,6 +40,7 @@ const FLOAT_FALL_PER_FRAME: float = 0.6
 const FLOAT_DRIFT_PER_FRAME: float = 0.25
 const CLIMB_PX_PER_FRAME: float = 0.5   # 30 px/sec
 const BOMB_FUSE_SECONDS: float = 5.0
+const EXPLOSION_RADIUS_PX: float = 24.0
 # Fallback when no level is bound: anything past the bottom of the default
 # playfield is lost (ТЗ §1.3). With a level, its kill_plane_y() is used so tall
 # custom levels don't kill lemmings mid-air.
@@ -313,8 +314,12 @@ func _process_exploding(delta: float) -> void:
 		var phase: float = fposmod(bomb_timer, 0.5)
 		sprite.modulate = Color(1.0, 0.4, 0.4) if phase > 0.25 else Color(1.0, 1.0, 0.4)
 	if bomb_timer <= 0.0:
-		if active_skill_node and active_skill_node.has_method("detonate"):
-			active_skill_node.detonate(self)
+		# The crater belongs to the explosion, not to how the fuse was lit —
+		# nuked lemmings (no skill node) must blast terrain exactly like
+		# hand-assigned bombers. Steel survives (carve skips it).
+		var lv: Level = _lv()
+		if lv != null:
+			lv.carve_circle_px(global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)
 		AudioManager.play_sfx("explosion")
 		die("bomb")
 
@@ -381,7 +386,12 @@ func assign_skill(skill) -> bool:
 		return false
 	if not skill.has_method("can_apply") or not skill.can_apply(self):
 		return false
-	active_skill_node = skill
+	# Only driver skills own the active slot. Flag skills (climber/floater)
+	# must NOT clobber it: replacing a BUILDING lemming's BuilderSkill with a
+	# tick-less flag skill left it frozen mid-staircase — stuck in BUILDING
+	# with nothing driving it, turning the whole crowd away.
+	if skill.has_method("needs_tick") and skill.needs_tick():
+		active_skill_node = skill
 	skill.apply(self)
 	return true
 
