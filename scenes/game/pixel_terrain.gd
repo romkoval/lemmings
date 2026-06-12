@@ -156,6 +156,13 @@ const THEMES: Dictionary = {
 		"dirt_dark": Color(0.22, 0.15, 0.50), "dirt_deep": Color(0.10, 0.07, 0.30),
 		"grass_hi": Color(0.50, 0.95, 1.00), "grass_lo": Color(0.20, 0.55, 0.85),
 	},
+	# Hell: charred basalt body under a molten-crust "grass" — darker and
+	# meaner than "fire" (which is bright ember dirt), made for lava levels.
+	"inferno": {
+		"dirt_light": Color(0.42, 0.20, 0.14), "dirt_mid": Color(0.27, 0.11, 0.08),
+		"dirt_dark": Color(0.16, 0.06, 0.05), "dirt_deep": Color(0.07, 0.03, 0.03),
+		"grass_hi": Color(1.00, 0.62, 0.14), "grass_lo": Color(0.80, 0.22, 0.04),
+	},
 }
 
 var theme_name: String = "dirt"

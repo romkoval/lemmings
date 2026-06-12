@@ -1,6 +1,6 @@
 extends Control
 
-const CATEGORIES: Array[String] = ["fun", "tricky"]
+const CATEGORIES: Array[String] = ["fun", "tricky", "taxing"]
 
 @onready var list_container: VBoxContainer = $ScrollContainer/VBoxContainer
 @onready var back_button: Button = $BackButton

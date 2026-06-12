@@ -207,6 +207,10 @@ func _build_terrain_rect(rect: Dictionary) -> void:
 			var mask: float = 1.0
 			for pc: int in pad_cols:
 				mask = minf(mask, clampf(abs(tx - pc) / ramp_dist, 0.0, 1.0))
+			# Hills always ramp down to zero at the rect's own ends, so an
+			# undulated rect always meets its flat neighbour flush — never with
+			# a step a walker can't climb.
+			mask = minf(mask, clampf(float(mini(i, w - i)) / ramp_dist, 0.0, 1.0))
 			hh = clampi(int(round(amp * hf * mask)), 0, amp)
 		heights.append(hh)
 
