@@ -244,17 +244,9 @@ func _set_highlight(lem: Lemming) -> void:
 
 
 func _find_lemming_near(pos: Vector2, max_dist: float) -> Lemming:
-	var best: Lemming = null
-	var best_d: float = max_dist
-	for n in get_tree().get_nodes_in_group("lemmings"):
-		var lem := n as Lemming
-		if lem == null:
-			continue
-		var d: float = lem.global_position.distance_to(pos)
-		if d < best_d:
-			best_d = d
-			best = lem
-	return best
+	# Crowd-aware pick (US-1.2): eligibility for the selected skill, walkers
+	# before workers, direction toward the tap — see SkillManager.pick_target.
+	return skill_manager.pick_target(get_tree().get_nodes_in_group("lemmings"), pos, max_dist)
 
 
 func _on_skill_chosen(skill_name: String) -> void:
