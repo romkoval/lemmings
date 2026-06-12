@@ -11,12 +11,23 @@ const RAMP_L_ATLAS := Vector2i(1, 1)   # 45° slope rising to the left
 const MAX_TILE_Y: int = 40
 
 
+var _pending_oneway: Array = []
+
+
 func _ready() -> void:
 	_ensure_background()
 	if data_path != "" and FileAccess.file_exists(data_path):
 		_apply_data(_read_json(data_path))
 	_build_default_floor_if_empty()
 	super._ready()
+	# One-way walls are stamped into the pixel material map AFTER the terrain
+	# build (like steel): crisp authored footprint, no smoothing erosion.
+	for ow in _pending_oneway:
+		if ow is Dictionary:
+			var r := Rect2i(int(ow.get("x", 0)) * TILE_SIZE, int(ow.get("y", 0)) * TILE_SIZE,
+				int(ow.get("w", 1)) * TILE_SIZE, int(ow.get("h", 1)) * TILE_SIZE)
+			var mat: float = PixelTerrain.MAT_ONEWAY_R if int(ow.get("dir", 1)) > 0 else PixelTerrain.MAT_ONEWAY_L
+			fill_rect_px(r, mat)
 
 
 func _ensure_background() -> void:
@@ -65,6 +76,8 @@ func _apply_data(d: Dictionary) -> void:
 	time_limit = int(d.get("time_limit", time_limit))
 	total_lemmings = int(d.get("total_lemmings", total_lemmings))
 	release_rate = int(d.get("release_rate", release_rate))
+	terrain_theme = str(d.get("theme", terrain_theme))
+	hint = str(d.get("hint", hint))
 	var sk = d.get("skill_counts", null)
 	if sk is Dictionary:
 		skill_counts = sk
@@ -102,6 +115,15 @@ func _apply_data(d: Dictionary) -> void:
 			zone.zone_size = Vector2(float(hr[2]), float(hr[3]))
 			add_child(zone)
 
+	# Triggered traps: {"type": "crusher"|"clamp", "pos": [x, y]}.
+	for tr in d.get("traps", []):
+		if tr is Dictionary and tr.get("pos", null) is Array and (tr["pos"] as Array).size() == 2:
+			var tp: Array = tr["pos"]
+			var trap := Trap.new()
+			trap.trap_type = Trap.type_from_name(str(tr.get("type", "crusher")))
+			trap.position = Vector2(float(tp[0]), float(tp[1]))
+			add_child(trap)
+
 	# The scrollable playfield (editor levels can be several screens wide/tall).
 	var pf = d.get("playfield", null)
 	if pf is Array and pf.size() == 4:
@@ -134,6 +156,7 @@ func _apply_data(d: Dictionary) -> void:
 			steel_layer.set_cell(c2, 1, _steel_variant(c2.x, c2.y))
 	for rect_dict in d.get("steel_rects", []):
 		_fill_steel_rect(rect_dict)
+	_pending_oneway = d.get("oneway_rects", [])
 
 
 # Load a PNG via FileAccess so user:// paths work in exported builds too.

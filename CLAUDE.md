@@ -11,7 +11,7 @@
 - **Managers:** GameManager, LevelManager, SaveManager, AudioManager — all Autoload
 - **Lemming FSM:** Finite State Machine per lemming (WALKING, FALLING, SKILL_ACTIVE, etc.)
 - **Skills:** Strategy pattern — each skill is a separate class extending BaseSkill
-- **Landscape:** per-pixel terrain (`PixelTerrain`), like the original game. Tile layers are only the AUTHORING format: at level load they are rasterized into a 1px solidity mask + material map (dirt/wood/steel), then hidden. Skills carve/fill pixels (`Level.carve_rect_px` / `fill_rect_px`); the visible terrain is drawn by `assets/shaders/pixel_terrain.gdshader` straight from the same mask, so physics and visuals can never disagree
+- **Landscape:** per-pixel terrain (`PixelTerrain`), like the original game. Tile layers are only the AUTHORING format: at level load they are rasterized into a 1px solidity mask + material map (dirt 0 / one-way→ 0.2 / one-way← 0.35 / wood 0.5 / steel 1.0), then hidden. Skills carve/fill pixels (`Level.carve_rect_px` / `fill_rect_px`); one-way walls block directional carving (basher/miner pass their direction; digger/explosions pass dir=0 and go through). The visible terrain is drawn by `assets/shaders/pixel_terrain.gdshader` straight from the same mask, so physics and visuals can never disagree
 - **UI:** HUD scene with skill panel, counters, timer. Touch-first design.
 
 ## Key Conventions

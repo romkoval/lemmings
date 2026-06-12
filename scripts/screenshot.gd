@@ -67,6 +67,11 @@ func _run() -> void:
 		game.set("_last_stroke", Vector2.INF)
 		for i in range(10):
 			game.call("_stroke_at", Vector2(420.0 + i * 12.0, 760.0))
+		game.set("tool", 9)  # ONEWAY_R — a one-way wall block with arrows
+		game.set("brush_radius", 24.0)
+		game.set("_last_stroke", Vector2.INF)
+		for i in range(5):
+			game.call("_stroke_at", Vector2(540.0, 1040.0 - i * 18.0))
 	var ap := assign.split(",")
 	for f in range(frames):
 		if ap.size() == 4 and f == int(ap[3]):

@@ -1,0 +1,86 @@
+{
+  "id": "tricky_10",
+  "name": "Экзамен",
+  "difficulty": "tricky",
+  "number": 10,
+  "save_required": 7,
+  "total_lemmings": 10,
+  "time_limit": 300,
+  "release_rate": 50,
+  "theme": "crystal",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 1,
+    "miner": 0,
+    "digger": 1
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    640,
+    494
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 2
+    },
+    {
+      "x": 8,
+      "y": 31,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "x": 43,
+      "y": 31,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "x": 8,
+      "y": 33,
+      "w": 37,
+      "h": 1
+    }
+  ],
+  "oneway_rects": [
+    {
+      "x": 30,
+      "y": 31,
+      "w": 2,
+      "h": 2,
+      "dir": 1
+    }
+  ],
+  "hazards": [
+    {
+      "type": "water",
+      "rect": [
+        320,
+        434,
+        100,
+        30
+      ]
+    }
+  ],
+  "traps": [],
+  "steel_rects": [],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

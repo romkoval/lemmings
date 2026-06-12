@@ -13,6 +13,8 @@ const STEEL_SOURCE: int = 1
 @export var time_limit: int = 300
 @export var total_lemmings: int = 10
 @export var release_rate: int = 50
+@export var terrain_theme: String = "dirt"   # visual palette: dirt/fire/marble/crystal
+@export var hint: String = ""                # onboarding tip shown once (US-5.2)
 @export var skill_counts: Dictionary = {
 	"climber": 0,
 	"floater": 0,
@@ -50,6 +52,7 @@ func _ready() -> void:
 func _build_pixel_terrain() -> void:
 	pixel_terrain = PixelTerrain.new()
 	pixel_terrain.name = "PixelTerrain"
+	pixel_terrain.theme_name = terrain_theme
 	add_child(pixel_terrain)
 	move_child(pixel_terrain, mini(2, get_child_count() - 1))
 	if pending_terrain_mask != null:
@@ -74,9 +77,19 @@ func is_steel_px(wp: Vector2) -> bool:
 	return pixel_terrain != null and pixel_terrain.is_steel_px(wp)
 
 
-# Carve destructible pixels (steel survives). Returns pixels removed.
-func carve_rect_px(r: Rect2i) -> int:
-	return pixel_terrain.carve_rect(r) if pixel_terrain != null else 0
+# Carve destructible pixels (steel survives; dir = ±1 also respects one-way
+# walls, dir = 0 ignores them). Returns pixels removed.
+func carve_rect_px(r: Rect2i, dir: int = 0) -> int:
+	return pixel_terrain.carve_rect(r, dir) if pixel_terrain != null else 0
+
+
+# Would a directional carve hit steel or an opposing one-way wall?
+func rect_blocks_carve_px(r: Rect2i, dir: int) -> bool:
+	return pixel_terrain != null and pixel_terrain.rect_blocks_carve(r, dir)
+
+
+func oneway_dir_px(wp: Vector2) -> int:
+	return pixel_terrain.oneway_dir_px(wp) if pixel_terrain != null else 0
 
 
 func carve_circle_px(center: Vector2, radius: float) -> int:

@@ -1,0 +1,60 @@
+{
+  "id": "tricky_08",
+  "name": "Стальной щит",
+  "difficulty": "tricky",
+  "number": 8,
+  "save_required": 8,
+  "total_lemmings": 10,
+  "time_limit": 240,
+  "release_rate": 50,
+  "theme": "marble",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 0,
+    "digger": 2
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    480,
+    498
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "steel_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 22,
+      "h": 1
+    },
+    {
+      "x": 28,
+      "y": 33,
+      "w": 7,
+      "h": 1
+    }
+  ],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

@@ -23,6 +23,79 @@ func _ready() -> void:
 	sfx_slider.drag_ended.connect(_on_sfx_drag_ended)
 	mute_check.toggled.connect(_on_mute_toggled)
 	back_button.pressed.connect(_on_back)
+	_build_language_row()
+	_build_hints_toggle()
+	_build_stats_block()
+
+
+# Language switch (US-3.5). Control texts auto-translate on locale change;
+# the code-built stats block below is rebuilt on the next visit.
+func _build_language_row() -> void:
+	var box: VBoxContainer = back_button.get_parent()
+	var row := HBoxContainer.new()
+	var lbl := Label.new()
+	lbl.text = "Язык / Language"
+	lbl.custom_minimum_size = Vector2(220, 0)
+	lbl.add_theme_font_size_override("font_size", 22)
+	row.add_child(lbl)
+	var opt := OptionButton.new()
+	opt.add_item("Русский")
+	opt.add_item("English")
+	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	opt.selected = 1 if str(SaveManager.settings.get("locale", "ru")) == "en" else 0
+	opt.item_selected.connect(func(i: int):
+		SaveManager.settings["locale"] = "en" if i == 1 else "ru"
+		SaveManager.apply_locale()
+		SaveManager.save_progress())
+	row.add_child(opt)
+	box.add_child(row)
+	box.move_child(row, back_button.get_index())
+
+
+# Onboarding hints on/off (US-5.2).
+func _build_hints_toggle() -> void:
+	var box: VBoxContainer = back_button.get_parent()
+	var check := CheckButton.new()
+	check.text = "Подсказки на уровнях"
+	check.button_pressed = bool(SaveManager.settings.get("hints_enabled", true))
+	check.add_theme_font_size_override("font_size", 22)
+	check.toggled.connect(func(on: bool):
+		SaveManager.settings["hints_enabled"] = on
+		SaveManager.save_progress())
+	box.add_child(check)
+	box.move_child(check, back_button.get_index())
+
+
+# Lifetime statistics (US-3.4), shown under the audio settings.
+const CAUSE_LABELS: Dictionary = {
+	"splat": "Разбились", "drowned": "Утонули", "burned": "Сгорели",
+	"trapped": "В ловушках", "bomb": "Взорвались", "fell_out": "Пропали в бездне",
+}
+
+
+func _build_stats_block() -> void:
+	var box: VBoxContainer = back_button.get_parent()
+	var header := Label.new()
+	header.text = "Статистика"
+	header.add_theme_font_size_override("font_size", 26)
+	box.add_child(header)
+	box.move_child(header, back_button.get_index())
+	var s: Dictionary = SaveManager.stats
+	var lines: Array = [
+		tr("Уровней пройдено: %d из %d сыгранных") % [int(s.get("levels_won", 0)), int(s.get("levels_played", 0))],
+		tr("Спасено леммингов: %d") % int(s.get("saved", 0)),
+		tr("Погибло леммингов: %d") % int(s.get("dead", 0)),
+	]
+	var by_cause: Dictionary = s.get("by_cause", {})
+	for cause in CAUSE_LABELS:
+		if int(by_cause.get(cause, 0)) > 0:
+			lines.append("  %s: %d" % [tr(CAUSE_LABELS[cause]), int(by_cause[cause])])
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 20)
+		box.add_child(lbl)
+		box.move_child(lbl, back_button.get_index())
 
 
 func _on_music_changed(v: float) -> void:

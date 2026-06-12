@@ -1,0 +1,56 @@
+{
+  "id": "tricky_04",
+  "name": "По стрелкам",
+  "difficulty": "tricky",
+  "number": 4,
+  "save_required": 8,
+  "total_lemmings": 10,
+  "time_limit": 240,
+  "release_rate": 50,
+  "theme": "crystal",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 2,
+    "miner": 0,
+    "digger": 0
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    620,
+    446
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "oneway_rects": [
+    {
+      "x": 20,
+      "y": 23,
+      "w": 3,
+      "h": 6,
+      "dir": 1
+    }
+  ],
+  "steel_rects": [],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

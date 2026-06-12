@@ -109,8 +109,13 @@ func test_nuked_lemming_blasts_a_crater() -> void:
 	GameManager.set_state(GameManager.GameState.PLAYING)
 	lem.start_bomb_countdown()
 	lem.bomb_timer = 0.02                     # fast-forward the fuse
+	# US-1.6: the fuse end starts an "Oh no!" shrug — no crater yet…
 	await wait_physics_frames(4)
-	assert_false(level.is_solid_px(Vector2(88.5, 470.5)), "crater carved without a skill node")
+	assert_true(level.is_solid_px(Vector2(88.5, 470.5)), "ground intact during the shrug")
+	assert_eq(lem.current_state, Lemming.State.EXPLODING, "still shrugging")
+	# …the blast lands only after OH_NO_SECONDS.
+	await wait_physics_frames(int(Lemming.OH_NO_SECONDS * 60.0) + 6)
+	assert_false(level.is_solid_px(Vector2(88.5, 470.5)), "crater carved after the shrug")
 	GameManager.set_state(GameManager.GameState.MENU)
 
 

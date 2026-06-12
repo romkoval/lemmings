@@ -30,6 +30,13 @@ var _mouse_panning: bool = false
 
 var current_level: Level = null
 var current_level_path: String = ""
+# Replays (US-3.1): every player action is logged against GameManager.sim_tick;
+# playback re-applies the log on the exact same ticks. The pixel simulation is
+# fully deterministic (fixed tick, integer pixels), so outcomes reproduce.
+var replay_log: Array = []
+var last_replay: Array = []
+var replay_mode: bool = false
+var _replay_queue: Array = []
 var lemming_manager: LemmingManager = null
 var skill_manager: SkillManager = null
 var hud: HUD = null
@@ -48,12 +55,14 @@ func _ready() -> void:
 	hud = HUD_SCENE.instantiate()
 	hud_layer.add_child(hud)
 	hud.pause_pressed.connect(_on_pause)
+	hud.step_pressed.connect(func(): GameManager.framestep())
 	hud.nuke_pressed.connect(_on_nuke)
 	hud.skill_chosen.connect(_on_skill_chosen)
 	hud.zoom_in_pressed.connect(func(): camera.zoom_in())
 	hud.zoom_out_pressed.connect(func(): camera.zoom_out())
 	hud.release_rate_changed.connect(_on_release_rate_changed)
 	skill_manager.skill_count_changed.connect(_on_skill_count_changed)
+	skill_manager.skill_assigned.connect(_on_skill_assigned_record)
 	hud.time_expired.connect(_on_time_expired)
 	GameManager.all_lemmings_resolved.connect(_on_all_resolved)
 
@@ -62,6 +71,7 @@ func _ready() -> void:
 	result_screen.retry_pressed.connect(_on_retry)
 	result_screen.menu_pressed.connect(_on_back_to_menu)
 	result_screen.next_pressed.connect(_on_next)
+	result_screen.replay_pressed.connect(_on_replay)
 	GameManager.level_completed.connect(_on_level_completed)
 	GameManager.level_failed.connect(_on_level_failed)
 
@@ -76,8 +86,16 @@ func _ready() -> void:
 
 # Accepts either a level scene (.tscn) or a custom-level .json saved by the
 # in-game editor — the latter is played through the shared custom_base scene
-# with its data_path pointed at the JSON.
-func load_level(scene_path: String) -> void:
+# with its data_path pointed at the JSON. Pass a replay log to WATCH the
+# attempt instead of playing it.
+func load_level(scene_path: String, replay: Array = []) -> void:
+	replay_mode = not replay.is_empty()
+	_replay_queue = replay.duplicate(true)
+	replay_log = []
+	_load_level_scene(scene_path)
+
+
+func _load_level_scene(scene_path: String) -> void:
 	if current_level:
 		current_level.queue_free()
 	var new_level: Level = null
@@ -112,6 +130,90 @@ func load_level(scene_path: String) -> void:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
 		camera.setup_bounds(current_level, focus)
 	hud.bind_minimap(current_level, camera)
+	_show_hint(current_level.hint)
+
+
+# Onboarding (US-5.2): a one-time dismissible tip over the HUD. Per-level,
+# remembered in the save; the settings screen can turn hints off entirely.
+var _hint_panel: PanelContainer = null
+
+
+func _show_hint(text: String) -> void:
+	if _hint_panel != null:
+		_hint_panel.queue_free()
+		_hint_panel = null
+	if text == "" or replay_mode:
+		return
+	if not bool(SaveManager.settings.get("hints_enabled", true)):
+		return
+	var shown: Dictionary = SaveManager.settings.get("hints_shown", {})
+	if bool(shown.get(GameManager.current_level_id, false)):
+		return
+	_hint_panel = PanelContainer.new()
+	_hint_panel.anchor_left = 0.5
+	_hint_panel.anchor_right = 0.5
+	_hint_panel.offset_left = -310
+	_hint_panel.offset_right = 310
+	_hint_panel.offset_top = 76
+	hud_layer.add_child(_hint_panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	_hint_panel.add_child(box)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 21)
+	box.add_child(lbl)
+	var ok := Button.new()
+	ok.text = "Понятно"
+	ok.custom_minimum_size = Vector2(0, 48)
+	ok.pressed.connect(_dismiss_hint)
+	box.add_child(ok)
+
+
+func _dismiss_hint() -> void:
+	if _hint_panel != null:
+		_hint_panel.queue_free()
+		_hint_panel = null
+	var shown: Dictionary = SaveManager.settings.get("hints_shown", {})
+	shown[GameManager.current_level_id] = true
+	SaveManager.settings["hints_shown"] = shown
+	SaveManager.save_progress()
+
+
+func _physics_process(_delta: float) -> void:
+	# Replay playback: apply every logged event whose tick has arrived.
+	if not replay_mode or not _playing():
+		return
+	while not _replay_queue.is_empty() and int(_replay_queue[0].get("t", 0)) <= GameManager.sim_tick:
+		_apply_replay_event(_replay_queue.pop_front())
+
+
+func _apply_replay_event(e: Dictionary) -> void:
+	match str(e.get("type", "")):
+		"assign":
+			var id: int = int(e.get("id", -1))
+			for n in get_tree().get_nodes_in_group("lemmings"):
+				var lem := n as Lemming
+				if lem != null and lem.lemming_id == id:
+					if skill_manager.select_skill(str(e.get("skill", ""))):
+						skill_manager.assign_to(lem)
+					break
+		"rate":
+			if current_level and current_level.entrance:
+				current_level.entrance.set_release_rate(int(e.get("v", 50)))
+		"nuke":
+			lemming_manager.nuke_all()
+
+
+func _record(e: Dictionary) -> void:
+	if not replay_mode:
+		e["t"] = GameManager.sim_tick
+		replay_log.append(e)
+
+
+func _on_skill_assigned_record(skill_name: String, lemming: Lemming) -> void:
+	_record({"type": "assign", "skill": skill_name, "id": lemming.lemming_id})
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -216,6 +318,8 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 
 
 func _try_assign_at(world_pos: Vector2) -> void:
+	if replay_mode:
+		return   # watching, not playing
 	if skill_manager.selected_skill == "":
 		return
 	var nearest: Lemming = _find_lemming_near(world_pos, 24.0)
@@ -266,10 +370,12 @@ func _on_pause() -> void:
 
 
 func _on_nuke() -> void:
+	_record({"type": "nuke"})
 	lemming_manager.nuke_all()
 
 
 func _on_release_rate_changed(rate: int) -> void:
+	_record({"type": "rate", "v": rate})
 	if current_level and current_level.entrance:
 		current_level.entrance.set_release_rate(rate)
 
@@ -284,6 +390,16 @@ func _on_time_expired() -> void:
 
 
 func _on_level_completed(saved: int, required: int) -> void:
+	SaveManager.record_result(GameManager.current_level_id, saved,
+		current_level.total_lemmings, int(hud.time_remaining))
+	_finish_replay_log()
+	# US-4.2: winning a test-play from the editor proves the level is solvable —
+	# stamp it verified; the recorded attempt is the author's proof replay.
+	if not replay_mode and LevelManager.editing_path != "":
+		var d: Dictionary = LevelManager.load_level_json(LevelManager.editing_path)
+		if not d.is_empty():
+			d["verified"] = true
+			LevelManager.save_level_json(LevelManager.editing_path, d)
 	result_screen.show_result(true, saved, required, current_level.total_lemmings, _next_level_path() != "")
 
 
@@ -314,7 +430,29 @@ func _on_next() -> void:
 
 
 func _on_level_failed(_reason: String) -> void:
+	# A lost attempt still records its best (e.g. saved some but missed quota).
+	SaveManager.record_result(GameManager.current_level_id, GameManager.saved_count,
+		current_level.total_lemmings, int(hud.time_remaining))
+	_finish_replay_log()
 	result_screen.show_result(false, GameManager.saved_count, current_level.save_required, current_level.total_lemmings)
+
+
+# Keep the attempt's log (for the result-screen replay button) and persist it.
+# A watched replay never overwrites the recording it came from.
+func _finish_replay_log() -> void:
+	if replay_mode:
+		return
+	last_replay = replay_log.duplicate(true)
+	LevelManager.save_replay(GameManager.current_level_id, last_replay)
+
+
+func _on_replay() -> void:
+	if last_replay.is_empty() and LevelManager.load_replay(GameManager.current_level_id).is_empty():
+		return
+	var events: Array = last_replay if not last_replay.is_empty() \
+		else LevelManager.load_replay(GameManager.current_level_id)
+	GameManager.reset()
+	load_level(current_level_path, events)
 
 
 func _on_retry() -> void:

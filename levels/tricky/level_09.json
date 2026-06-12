@@ -1,0 +1,67 @@
+{
+  "id": "tricky_09",
+  "name": "Через пекло",
+  "difficulty": "tricky",
+  "number": 9,
+  "save_required": 8,
+  "total_lemmings": 10,
+  "time_limit": 300,
+  "release_rate": 50,
+  "theme": "fire",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 1,
+    "basher": 1,
+    "miner": 0,
+    "digger": 0
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    439,
+    364
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "oneway_rects": [
+    {
+      "x": 18,
+      "y": 23,
+      "w": 2,
+      "h": 6,
+      "dir": 1
+    }
+  ],
+  "hazards": [
+    {
+      "type": "fire",
+      "rect": [
+        448,
+        434,
+        44,
+        30
+      ]
+    }
+  ],
+  "steel_rects": [],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

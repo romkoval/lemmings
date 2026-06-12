@@ -2,6 +2,7 @@ class_name HUD
 extends Control
 
 signal pause_pressed()
+signal step_pressed()
 signal nuke_pressed()
 signal skill_chosen(skill_name: String)
 signal time_expired()
@@ -30,6 +31,7 @@ const BOTTOM_BAR_HEIGHT: float = 112.0
 @onready var timer_label: Label = $TopBar/TimerLabel
 @onready var fast_button: Button = $TopBar/FastButton
 @onready var pause_button: Button = $TopBar/PauseButton
+@onready var step_button: Button = $TopBar/StepButton
 @onready var nuke_button: Button = $TopBar/NukeButton
 @onready var top_bar: Control = $TopBar
 @onready var bottom_bar: Control = $BottomBar
@@ -53,6 +55,7 @@ var _rate_hold_time: float = 0.0
 
 func _ready() -> void:
 	pause_button.pressed.connect(func(): pause_pressed.emit())
+	step_button.pressed.connect(func(): step_pressed.emit())
 	nuke_button.pressed.connect(func(): nuke_pressed.emit())
 	fast_button.toggled.connect(_on_fast_toggled)
 	# time_scale / tick rate are global state — never leak back to the menus.
@@ -69,7 +72,7 @@ func _ready() -> void:
 			label.add_theme_color_override("font_color", Color.WHITE)
 			label.add_theme_color_override("font_outline_color", Color.BLACK)
 			label.add_theme_constant_override("outline_size", 3)
-	for btn in [pause_button, nuke_button]:
+	for btn in [pause_button, nuke_button, step_button]:
 		if btn:
 			btn.add_theme_font_size_override("font_size", 18)
 	zoom_in_button.pressed.connect(func(): zoom_in_pressed.emit())
@@ -148,6 +151,9 @@ func _process(delta: float) -> void:
 			time_remaining = 0
 			time_active = false
 			time_expired.emit()
+	# Framestep is only meaningful while paused.
+	if step_button:
+		step_button.disabled = GameManager.current_state != GameManager.GameState.PAUSED
 	if _rate_hold_dir != 0:
 		# Held −/+ keeps stepping: first repeat after the delay, then one step
 		# per interval (the while-loop catches up after a slow frame).
@@ -207,9 +213,9 @@ func mark_selected_skill(skill_name: String) -> void:
 
 func _update_labels() -> void:
 	if saved_label:
-		saved_label.text = "Спасено: %d / %d" % [GameManager.saved_count, required_saved]
+		saved_label.text = tr("Спасено: %d / %d") % [GameManager.saved_count, required_saved]
 	if spawned_label:
-		spawned_label.text = "Вышло: %d" % GameManager.spawned_count
+		spawned_label.text = tr("Вышло: %d") % GameManager.spawned_count
 	if timer_label:
 		var m: int = int(time_remaining) / 60
 		var s: int = int(time_remaining) % 60

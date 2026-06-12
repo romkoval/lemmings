@@ -1,0 +1,62 @@
+{
+  "id": "tricky_06",
+  "name": "Сквозь скалу",
+  "difficulty": "tricky",
+  "number": 6,
+  "save_required": 6,
+  "total_lemmings": 10,
+  "time_limit": 300,
+  "release_rate": 95,
+  "theme": "fire",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 1,
+    "digger": 0
+  },
+  "entrance_pos": [
+    80,
+    302
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    620,
+    446
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 23,
+      "w": 20,
+      "h": 10
+    },
+    {
+      "x": 20,
+      "y": 29,
+      "w": 25,
+      "h": 4
+    }
+  ],
+  "traps": [
+    {
+      "type": "crusher",
+      "pos": [
+        430,
+        440
+      ]
+    }
+  ],
+  "steel_rects": [],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 14,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

@@ -51,10 +51,11 @@ func tick(lemming: Lemming) -> void:
 	var fy: int = lemming.feet_y()
 	var x0: int = fx + 2 if lemming.direction > 0 else fx - 2 - SLICE_DEPTH
 	var slice := Rect2i(x0, fy - TUNNEL_H, SLICE_DEPTH, TUNNEL_H)
-	if level.rect_has_steel_px(slice):
+	# Steel or a one-way wall pointing against us — stop swinging.
+	if level.rect_blocks_carve_px(slice, lemming.direction):
 		lemming.change_state(Lemming.State.WALKING)
 		return
-	var carved: int = level.carve_rect_px(slice)
+	var carved: int = level.carve_rect_px(slice, lemming.direction)
 	if carved == 0:
 		# Nothing solid ahead — tunnel finished, resume walking.
 		lemming.change_state(Lemming.State.WALKING)

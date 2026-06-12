@@ -1,6 +1,6 @@
 extends Control
 
-const CATEGORIES: Array[String] = ["fun"]
+const CATEGORIES: Array[String] = ["fun", "tricky"]
 
 @onready var list_container: VBoxContainer = $ScrollContainer/VBoxContainer
 @onready var back_button: Button = $BackButton
@@ -25,9 +25,19 @@ func _populate() -> void:
 			var btn := Button.new()
 			btn.custom_minimum_size = Vector2(0, 56)
 			var level_id: String = "%s_%02d" % [category, level_num]
-			var done: String = " ✓" if SaveManager.is_level_complete(level_id) else ""
-			btn.text = "Уровень %d%s" % [level_num, done]
-			btn.pressed.connect(_on_pick.bind(category, level_num))
+			# Progression (US-2.3): levels open in order; the button shows the
+			# personal best so there's a reason to replay.
+			if not SaveManager.is_level_unlocked(category, level_num):
+				btn.text = tr("🔒 Уровень %d") % level_num
+				btn.disabled = true
+			else:
+				var done: String = " ✓" if SaveManager.is_level_complete(level_id) else ""
+				var best: Dictionary = SaveManager.best_result(level_id)
+				var record: String = ""
+				if not best.is_empty():
+					record = "   ★ %d/%d" % [int(best.get("saved", 0)), int(best.get("total", 0))]
+				btn.text = tr("Уровень %d%s%s") % [level_num, done, record]
+				btn.pressed.connect(_on_pick.bind(category, level_num))
 			list_container.add_child(btn)
 
 
