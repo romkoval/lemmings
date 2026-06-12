@@ -110,6 +110,50 @@ func test_editor_paints_pixels_and_round_trips_through_game() -> void:
 		"deleting the level removes its PNGs")
 
 
+func test_wide_canvas_scrolls_and_round_trips() -> void:
+	# A level can span several screens: painting beyond the first screen must
+	# survive the save/load round-trip, the canvas resize must keep existing
+	# strokes, and the played level must expose the full playfield to the
+	# camera plus a kill plane below its bottom (not the hardcoded one-screen).
+	var editor = (load("res://scenes/editor/level_editor.tscn") as PackedScene).instantiate()
+	add_child_autoqfree(editor)
+	await wait_physics_frames(1)
+	editor.tool = editor.Tool.DIRT
+	editor._stroke_at(Vector2(100, 500))
+	editor._set_canvas_screens(2, 1)
+	assert_true(editor.terrain.is_solid_px(Vector2(100, 500)), "resize keeps painted pixels")
+	editor._last_stroke = Vector2.INF
+	editor._stroke_at(Vector2(1100, 700))   # beyond the first screen
+	assert_true(editor.terrain.is_solid_px(Vector2(1100, 700)), "painting past screen 1 works")
+	editor.level_id = "custom_gut_wide"
+	editor.save_path = "user://custom_levels/custom_gut_wide.json"
+	assert_true(editor._save(false))
+	var base: PackedScene = load("res://levels/custom_base.tscn")
+	var level: Level = base.instantiate() as Level
+	level.set("data_path", "user://custom_levels/custom_gut_wide.json")
+	add_child_autoqfree(level)
+	await wait_physics_frames(2)
+	assert_true(level.is_solid_px(Vector2(1100, 700)), "off-screen stroke solid in game")
+	var bounds: Rect2 = level.get_terrain_bounds_px()
+	assert_gte(bounds.size.x, 1440.0, "camera can scroll the full two-screen width")
+	assert_gt(level.kill_plane_y(), bounds.end.y, "kill plane below the playfield")
+	LevelManager.delete_custom_level("user://custom_levels/custom_gut_wide.json")
+
+
+func test_bounds_always_cover_entrance_and_exit() -> void:
+	# Even when the terrain is a thin band, the scrollable area includes the
+	# doors and at least one screen — the camera can always reach the action.
+	var base: PackedScene = load("res://levels/custom_base.tscn")
+	var level: Level = base.instantiate() as Level
+	add_child_autoqfree(level)
+	await wait_physics_frames(1)
+	level.level_exit.position = Vector2(650, 1200)
+	var bounds: Rect2 = level.get_terrain_bounds_px()
+	assert_true(bounds.encloses(Rect2(0, 0, 720, 1280)), "at least one screen scrollable")
+	assert_true(bounds.has_point(level.entrance.position), "entrance reachable")
+	assert_true(bounds.has_point(Vector2(650, 1199)), "exit reachable")
+
+
 func test_editor_eraser_cuts_through_steel() -> void:
 	# Gameplay carving must never remove steel, but the EDITOR's eraser is the
 	# author's tool — it erases anything.

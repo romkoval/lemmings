@@ -94,20 +94,42 @@ func rect_has_steel_px(r: Rect2i) -> bool:
 
 # ── Authoring helpers ───────────────────────────────────────────────────────
 
-# Bounding box of the authored terrain in world pixels (camera pan clamp).
-# Computed from the tile layers, which keep the authored level data even after
-# being rasterized and hidden.
+# The authored playfield in world pixels (editor levels save it explicitly;
+# ProceduralLevel fills it from the level JSON). Empty = derive from tiles.
+var playfield_rect: Rect2 = Rect2()
+
+
+# Bounding box the camera may pan over. Starts from the explicit playfield (or
+# the authored tile rect), then always includes one screen at the origin plus
+# the entrance and exit — so spawn and goal can never sit outside the
+# scrollable area no matter how the level was authored.
 func get_terrain_bounds_px() -> Rect2:
-	var r: Rect2i = Rect2i()
-	if terrain_layer != null:
-		r = terrain_layer.get_used_rect()
-	if steel_layer != null:
-		var rs: Rect2i = steel_layer.get_used_rect()
-		if rs.has_area():
-			r = rs if not r.has_area() else r.merge(rs)
-	if not r.has_area():
-		return Rect2(0, 0, 720, 1280)
-	return Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+	var base: Rect2 = playfield_rect
+	if not base.has_area():
+		var r: Rect2i = Rect2i()
+		if terrain_layer != null:
+			r = terrain_layer.get_used_rect()
+		if steel_layer != null:
+			var rs: Rect2i = steel_layer.get_used_rect()
+			if rs.has_area():
+				r = rs if not r.has_area() else r.merge(rs)
+		if r.has_area():
+			base = Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+	if not base.has_area():
+		base = Rect2(0, 0, 720, 1280)
+	else:
+		base = base.merge(Rect2(0, 0, 720, 1280))
+	if entrance != null:
+		base = base.expand(entrance.position)
+	if level_exit != null:
+		base = base.expand(level_exit.position)
+	return base
+
+
+# Anything falling below this is lost (cleanup of runaways). Derived from the
+# playfield so tall custom levels don't kill lemmings mid-level.
+func kill_plane_y() -> float:
+	return get_terrain_bounds_px().end.y + 160.0
 
 
 func world_to_tile(world_pos: Vector2) -> Vector2i:

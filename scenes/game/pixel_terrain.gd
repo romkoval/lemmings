@@ -90,6 +90,27 @@ func build_from_images(mask_img: Image, mat_img: Image, origin: Vector2i) -> voi
 	_finalize_build()
 
 
+# An all-air canvas covering `rect_px` (world pixels) plus a working margin for
+# builder bridges. Used by the level editor for fresh canvases of any size.
+func build_blank(rect_px: Rect2i, margin: int = 192) -> void:
+	_origin = rect_px.position - Vector2i(margin, margin)
+	_size = rect_px.size + Vector2i(margin * 2, margin * 2)
+	_mask = Image.create(_size.x, _size.y, false, Image.FORMAT_L8)
+	_mat = Image.create(_size.x, _size.y, false, Image.FORMAT_L8)
+	_finalize_build()
+
+
+# Copy previously exported content into the current canvas (level editor canvas
+# resize): pixels keep their world position; anything outside is cropped.
+func blit_from(mask_img: Image, mat_img: Image, src_origin: Vector2i) -> void:
+	var src_rect := Rect2i(Vector2i.ZERO, Vector2i(mask_img.get_width(), mask_img.get_height()))
+	var dst: Vector2i = src_origin - _origin
+	_mask.blit_rect(mask_img, src_rect, dst)
+	if mat_img != null:
+		_mat.blit_rect(mat_img, src_rect, dst)
+	_dirty = true
+
+
 # Copies of the live mask/material for saving (level editor).
 func export_images() -> Dictionary:
 	return {
@@ -97,6 +118,12 @@ func export_images() -> Dictionary:
 		"mat": _mat.duplicate(),
 		"origin": _origin,
 	}
+
+
+# In the editor the canvas is being authored, so grass follows the strokes live
+# (the "original surface" IS the current one). In the game it must be the
+# load-time snapshot, so carved tunnels expose bare dirt. Set before build.
+var live_grass: bool = false
 
 
 func _finalize_build() -> void:
@@ -111,6 +138,11 @@ func _finalize_build() -> void:
 	var sh := ShaderMaterial.new()
 	sh.shader = load("res://assets/shaders/pixel_terrain.gdshader")
 	sh.set_shader_parameter("material_tex", _mat_tex)
+	# Grass grows only where the ORIGINAL surface was: a frozen snapshot of the
+	# load-time mask. Skills carve the live mask; the snapshot never updates, so
+	# bashed/mined passages stay bare dirt instead of sprouting grass.
+	var orig_tex: ImageTexture = _mask_tex if live_grass else ImageTexture.create_from_image(_mask)
+	sh.set_shader_parameter("orig_mask", orig_tex)
 	material = sh
 
 

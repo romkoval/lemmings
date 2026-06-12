@@ -92,6 +92,11 @@ func _apply_data(d: Dictionary) -> void:
 	if d.get("add_depth", false):
 		_add_depth()
 
+	# The scrollable playfield (editor levels can be several screens wide/tall).
+	var pf = d.get("playfield", null)
+	if pf is Array and pf.size() == 4:
+		playfield_rect = Rect2(float(pf[0]), float(pf[1]), float(pf[2]), float(pf[3]))
+
 	# Editor-painted pixel terrain: mask/material PNGs saved next to the level
 	# JSON. Takes precedence over any tile-based shapes.
 	var mask_name: String = str(d.get("terrain_mask", ""))

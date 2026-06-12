@@ -13,7 +13,9 @@ extends Node2D
 # Input: one finger / LMB paints with the active brush; two fingers pinch-zoom
 # and pan; mouse wheel zooms, right/middle drag pans.
 
-const CANVAS_PX := Vector2i(720, 1280)
+const SCREEN_PX := Vector2i(720, 1280)
+const MAX_SCREENS_W: int = 4
+const MAX_SCREENS_H: int = 3
 
 enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT }
 
@@ -40,6 +42,9 @@ const SKILL_LABELS: Dictionary = {
 @onready var camera: Camera2D = $Camera2D
 
 var terrain: PixelTerrain = null
+# Canvas size in screens (720×1280 each) — levels can span several screens.
+var screens_w: int = 1
+var screens_h: int = 1
 
 var tool: Tool = Tool.DIRT
 var brush_radius: float = 12.0
@@ -75,34 +80,57 @@ func _ready() -> void:
 		skill_counts[k] = 2
 	_init_blank_canvas()
 	_build_ui()
-	camera.setup_bounds(self, Vector2(CANVAS_PX) * 0.5)
-	camera.set_zoom_level(1.0)
+	_refresh_camera()
 	# Returning from a test run (or opening an existing level from the browser).
 	if LevelManager.editing_path != "":
 		_load_from(LevelManager.editing_path)
 	queue_redraw()
 
 
-# An all-air pixel canvas sized like a campaign level (built through the same
-# tile→mask path the game uses, with empty layers).
+func canvas_px() -> Vector2i:
+	return Vector2i(SCREEN_PX.x * screens_w, SCREEN_PX.y * screens_h)
+
+
+# An all-air pixel canvas of the current size, with live grass preview (what
+# you paint is the "natural" surface).
 func _init_blank_canvas() -> void:
 	if terrain != null:
 		terrain.queue_free()
 	terrain = PixelTerrain.new()
 	terrain.name = "Canvas"
+	terrain.live_grass = true
 	$World.add_child(terrain)
 	$World.move_child(terrain, 0)
-	var empty_t := TileMapLayer.new()
-	var empty_s := TileMapLayer.new()
-	terrain.build_from_tiles(empty_t, empty_s)
-	empty_t.free()
-	empty_s.free()
+	terrain.build_blank(Rect2i(Vector2i.ZERO, canvas_px()))
 	_has_content = false
+
+
+# Change the canvas size in screens, keeping everything already painted (pixels
+# stay at their world positions; shrinking crops).
+func _set_canvas_screens(w: int, h: int) -> void:
+	w = clampi(w, 1, MAX_SCREENS_W)
+	h = clampi(h, 1, MAX_SCREENS_H)
+	if w == screens_w and h == screens_h:
+		return
+	screens_w = w
+	screens_h = h
+	var old: Dictionary = terrain.export_images()
+	var had_content: bool = _has_content
+	_init_blank_canvas()
+	terrain.blit_from(old["mask"], old["mat"], old["origin"])
+	_has_content = had_content
+	_refresh_camera()
+	queue_redraw()
+
+
+func _refresh_camera() -> void:
+	camera.setup_bounds(self, Vector2(canvas_px()) * 0.5)
+	camera.set_zoom_level(1.0)
 
 
 # camera_controller asks the bound node for pan bounds — the editor's canvas.
 func get_terrain_bounds_px() -> Rect2:
-	return Rect2(Vector2.ZERO, Vector2(CANVAS_PX))
+	return Rect2(Vector2.ZERO, Vector2(canvas_px()))
 
 
 func _process(_delta: float) -> void:
@@ -110,7 +138,12 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, Vector2(CANVAS_PX)), Color(1, 1, 1, 0.35), false, 2.0)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(canvas_px())), Color(1, 1, 1, 0.35), false, 2.0)
+	# Faint screen-size guides inside multi-screen canvases.
+	for sx in range(1, screens_w):
+		draw_line(Vector2(sx * SCREEN_PX.x, 0), Vector2(sx * SCREEN_PX.x, canvas_px().y), Color(1, 1, 1, 0.12))
+	for sy in range(1, screens_h):
+		draw_line(Vector2(0, sy * SCREEN_PX.y), Vector2(canvas_px().x, sy * SCREEN_PX.y), Color(1, 1, 1, 0.12))
 	if _cursor_world != Vector2.INF and tool in [Tool.DIRT, Tool.STEEL, Tool.ERASE]:
 		var col := Color(1, 1, 1, 0.6)
 		if tool == Tool.STEEL:
@@ -123,7 +156,8 @@ func _draw() -> void:
 # ── Painting ─────────────────────────────────────────────────────────────────
 
 func _stroke_at(world: Vector2) -> void:
-	var p := Vector2(clampf(world.x, 0, CANVAS_PX.x), clampf(world.y, 0, CANVAS_PX.y))
+	var cpx := canvas_px()
+	var p := Vector2(clampf(world.x, 0, cpx.x), clampf(world.y, 0, cpx.y))
 	match tool:
 		Tool.ENTRANCE:
 			entrance.position = p.round()
@@ -247,6 +281,7 @@ func _collect_meta() -> Dictionary:
 		"terrain_mask": level_id + "_mask.png",
 		"terrain_mat": level_id + "_mat.png",
 		"terrain_origin": [terrain.bounds_px().position.x, terrain.bounds_px().position.y],
+		"playfield": [0, 0, canvas_px().x, canvas_px().y],
 	}
 
 
@@ -271,6 +306,12 @@ func _load_from(path: String) -> void:
 	var xp = d.get("exit_pos", null)
 	if xp is Array and xp.size() == 2:
 		level_exit.position = Vector2(float(xp[0]), float(xp[1]))
+	var pf = d.get("playfield", null)
+	if pf is Array and pf.size() == 4:
+		screens_w = clampi(int(float(pf[2]) / SCREEN_PX.x), 1, MAX_SCREENS_W)
+		screens_h = clampi(int(float(pf[3]) / SCREEN_PX.y), 1, MAX_SCREENS_H)
+		_init_blank_canvas()
+		_refresh_camera()
 	_load_terrain(d, path.get_base_dir())
 
 
@@ -489,6 +530,10 @@ func _build_params_panel(ui: CanvasLayer) -> void:
 	_name_edit.text_changed.connect(func(t: String): level_name = t)
 	name_row.add_child(_name_edit)
 
+	_add_spin(box, "Ширина (экранов)", 1, MAX_SCREENS_W, screens_w,
+		func(v: float): _set_canvas_screens(int(v), screens_h))
+	_add_spin(box, "Высота (экранов)", 1, MAX_SCREENS_H, screens_h,
+		func(v: float): _set_canvas_screens(screens_w, int(v)))
 	_add_spin(box, "Леммингов", 1, 100, total_lemmings, func(v: float): total_lemmings = int(v))
 	_add_spin(box, "Спасти минимум", 1, 100, save_required, func(v: float): save_required = int(v))
 	_add_spin(box, "Время (сек)", 30, 900, time_limit, func(v: float): time_limit = int(v))
@@ -526,6 +571,8 @@ func _toggle_params() -> void:
 	_params_panel.visible = not _params_panel.visible
 	if _params_panel.visible:
 		_name_edit.text = level_name
+		_spins["Ширина (экранов)"].value = screens_w
+		_spins["Высота (экранов)"].value = screens_h
 		_spins["Леммингов"].value = total_lemmings
 		_spins["Спасти минимум"].value = save_required
 		_spins["Время (сек)"].value = time_limit
