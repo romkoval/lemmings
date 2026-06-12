@@ -150,11 +150,12 @@ func _show_hint(text: String) -> void:
 	if bool(shown.get(GameManager.current_level_id, false)):
 		return
 	_hint_panel = PanelContainer.new()
-	_hint_panel.anchor_left = 0.5
-	_hint_panel.anchor_right = 0.5
-	_hint_panel.offset_left = -310
-	_hint_panel.offset_right = 310
-	_hint_panel.offset_top = 76
+	# Below the top bar and inside the safe-area insets (notch, rounded corners),
+	# clear of the minimap — the HUD owns that geometry.
+	var slot: Rect2 = hud.hint_rect()
+	_hint_panel.offset_left = slot.position.x
+	_hint_panel.offset_right = slot.end.x
+	_hint_panel.offset_top = slot.position.y
 	hud_layer.add_child(_hint_panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)

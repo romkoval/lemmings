@@ -51,6 +51,10 @@ var release_rate: int = 50
 var min_release_rate: int = 1
 var _rate_hold_dir: int = 0
 var _rate_hold_time: float = 0.0
+# Current safe-area insets in design px (left, top, right, bottom) — what
+# _apply_safe_area last computed. Other HUD-anchored UI (the hint banner)
+# positions itself off these via hint_rect().
+var _insets := Vector4(EDGE_MARGIN, EDGE_MARGIN, EDGE_MARGIN, EDGE_MARGIN)
 
 
 func _ready() -> void:
@@ -68,7 +72,7 @@ func _ready() -> void:
 		rb.add_theme_font_size_override("font_size", 30)
 	for label in [saved_label, spawned_label, timer_label, rate_label]:
 		if label:
-			label.add_theme_font_size_override("font_size", 22)
+			label.add_theme_font_size_override("font_size", 20)
 			label.add_theme_color_override("font_color", Color.WHITE)
 			label.add_theme_color_override("font_outline_color", Color.BLACK)
 			label.add_theme_constant_override("outline_size", 3)
@@ -103,6 +107,14 @@ func _apply_safe_area() -> void:
 	var top: float = EDGE_MARGIN + clampf(float(safe.position.y) * sy, 0.0, max_y)
 	var right: float = EDGE_MARGIN + clampf(float(win.x - safe.end.x) * sx, 0.0, max_x)
 	var bottom: float = EDGE_MARGIN + clampf(float(win.y - safe.end.y) * sy, 0.0, max_y)
+	_apply_insets(left, top, right, bottom)
+
+
+# Lay the HUD out for the given insets (margin already included). Split from
+# _apply_safe_area so tests can drive it with notch-sized values that the OS
+# won't report on a desktop.
+func _apply_insets(left: float, top: float, right: float, bottom: float) -> void:
+	_insets = Vector4(left, top, right, bottom)
 
 	top_bar.offset_left = left
 	top_bar.offset_right = -right
@@ -139,6 +151,19 @@ func bind_minimap(level: Node, camera: Node) -> void:
 	if minimap and minimap.has_method("bind"):
 		minimap.bind(level, camera)
 		_apply_safe_area()
+
+
+# Where a transient banner (the level hint) may sit: under the top bar inside
+# the safe-area insets, stopping short of the minimap — so it can never cover
+# the camera cutout, the counters or the corner controls. Height is 0: the
+# banner grows downward from here.
+func hint_rect() -> Rect2:
+	var left: float = _insets.x
+	var top: float = _insets.y + TOP_BAR_HEIGHT + 8.0
+	var right_edge: float = size.x - _insets.z
+	if minimap and minimap.visible:
+		right_edge = size.x + minimap.offset_left - 10.0
+	return Rect2(left, top, maxf(160.0, right_edge - left), 0.0)
 
 
 func _process(delta: float) -> void:
