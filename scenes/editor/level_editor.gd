@@ -17,7 +17,7 @@ const SCREEN_PX := Vector2i(720, 1280)
 const MAX_SCREENS_W: int = 4
 const MAX_SCREENS_H: int = 3
 
-enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT }
+enum Tool { DIRT, STEEL, ERASE, ENTRANCE, EXIT, WATER, FIRE }
 
 const TOOL_LABELS: Dictionary = {
 	Tool.DIRT: "Грунт",
@@ -25,6 +25,8 @@ const TOOL_LABELS: Dictionary = {
 	Tool.ERASE: "Ластик",
 	Tool.ENTRANCE: "Вход",
 	Tool.EXIT: "Выход",
+	Tool.WATER: "Вода",
+	Tool.FIRE: "Огонь",
 }
 const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
 const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
@@ -57,8 +59,12 @@ var time_limit: int = 300
 var release_rate: int = 50
 var skill_counts: Dictionary = {}
 
+var hazards: Array = []   # HazardZone nodes living in $World, saved with the level
+
 var _has_content: bool = false
 var _painting: bool = false
+var _active_hazard: HazardZone = null   # the zone being dragged out right now
+var _hazard_anchor: Vector2 = Vector2.ZERO
 var _last_stroke: Vector2 = Vector2.INF
 var _cursor_world: Vector2 = Vector2.INF
 var _touches: Dictionary = {}
@@ -165,6 +171,19 @@ func _stroke_at(world: Vector2) -> void:
 		Tool.EXIT:
 			level_exit.position = p.round()
 			return
+		Tool.WATER, Tool.FIRE:
+			# Drag out a rectangle: the press anchors a corner, the drag pulls
+			# the opposite one. Releasing the pointer finalizes the zone.
+			var htype := HazardZone.HazardType.WATER if tool == Tool.WATER else HazardZone.HazardType.FIRE
+			if _active_hazard == null:
+				_hazard_anchor = p
+				_active_hazard = _add_hazard(htype, Rect2(p, HazardZone.MIN_SIZE))
+			else:
+				var hr := Rect2(_hazard_anchor, Vector2.ZERO).expand(p).abs()
+				_active_hazard.position = hr.position
+				_active_hazard.zone_size = hr.size
+			_last_stroke = p
+			return
 		_:
 			pass
 	# Brush stroke: stamp circles from the last point to this one so fast drags
@@ -183,7 +202,27 @@ func _stroke_at(world: Vector2) -> void:
 				_has_content = true
 			Tool.ERASE:
 				terrain.carve_circle(q, brush_radius, true)
+				_erase_hazards_at(q)
 	_last_stroke = p
+
+
+func _add_hazard(htype: HazardZone.HazardType, rect: Rect2) -> HazardZone:
+	var zone := HazardZone.new()
+	zone.hazard_type = htype
+	zone.position = rect.position
+	zone.zone_size = rect.size
+	$World.add_child(zone)
+	hazards.append(zone)
+	return zone
+
+
+# The eraser doubles as the hazard remover — any stamp landing on a zone
+# deletes the whole zone (zones are placed objects, not pixels).
+func _erase_hazards_at(p: Vector2) -> void:
+	for hz in hazards.duplicate():
+		if (hz as HazardZone).rect_px().grow(brush_radius * 0.5).has_point(p):
+			hazards.erase(hz)
+			hz.queue_free()
 
 
 # ── Input: paint / pan / zoom ────────────────────────────────────────────────
@@ -206,6 +245,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _touches.is_empty():
 				_painting = false
 				_gesture = false
+				_active_hazard = null
 	elif event is InputEventScreenDrag:
 		var sd := event as InputEventScreenDrag
 		_touches[sd.index] = sd.position
@@ -221,6 +261,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if mb.pressed:
 				_last_stroke = Vector2.INF
 				_stroke_at(get_global_mouse_position())
+			else:
+				_active_hazard = null
 		elif mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			_mouse_panning = mb.pressed
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
@@ -282,6 +324,10 @@ func _collect_meta() -> Dictionary:
 		"terrain_mat": level_id + "_mat.png",
 		"terrain_origin": [terrain.bounds_px().position.x, terrain.bounds_px().position.y],
 		"playfield": [0, 0, canvas_px().x, canvas_px().y],
+		"hazards": hazards.map(func(h): return {
+			"type": HazardZone.TYPE_NAMES[(h as HazardZone).hazard_type],
+			"rect": [h.position.x, h.position.y, h.zone_size.x, h.zone_size.y],
+		}),
 	}
 
 
@@ -312,6 +358,15 @@ func _load_from(path: String) -> void:
 		screens_h = clampi(int(float(pf[3]) / SCREEN_PX.y), 1, MAX_SCREENS_H)
 		_init_blank_canvas()
 		_refresh_camera()
+	for hz in hazards:
+		hz.queue_free()
+	hazards.clear()
+	_active_hazard = null
+	for hz in d.get("hazards", []):
+		if hz is Dictionary and hz.get("rect", null) is Array and (hz["rect"] as Array).size() == 4:
+			var hr: Array = hz["rect"]
+			_add_hazard(HazardZone.type_from_name(str(hz.get("type", "water"))),
+				Rect2(float(hr[0]), float(hr[1]), float(hr[2]), float(hr[3])))
 	_load_terrain(d, path.get_base_dir())
 
 
