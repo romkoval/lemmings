@@ -92,12 +92,51 @@ func _apply_data(d: Dictionary) -> void:
 	if d.get("add_depth", false):
 		_add_depth()
 
+	# The scrollable playfield (editor levels can be several screens wide/tall).
+	var pf = d.get("playfield", null)
+	if pf is Array and pf.size() == 4:
+		playfield_rect = Rect2(float(pf[0]), float(pf[1]), float(pf[2]), float(pf[3]))
+
+	# Editor-painted pixel terrain: mask/material PNGs saved next to the level
+	# JSON. Takes precedence over any tile-based shapes.
+	var mask_name: String = str(d.get("terrain_mask", ""))
+	if mask_name != "":
+		var dir: String = data_path.get_base_dir()
+		pending_terrain_mask = _load_png(dir + "/" + mask_name)
+		pending_terrain_mat = _load_png(dir + "/" + str(d.get("terrain_mat", "")))
+		var org = d.get("terrain_origin", null)
+		if org is Array and org.size() == 2:
+			pending_terrain_origin = Vector2i(int(org[0]), int(org[1]))
+
+	# Hand-painted cells (an older editor format): plain [x, y] pairs, or
+	# [x, y, atlas_x, atlas_y] to place ramp tiles.
+	for cell in d.get("terrain_tiles", []):
+		if cell is Array and cell.size() >= 2:
+			var ct := Vector2i(int(cell[0]), int(cell[1]))
+			var atlas: Vector2i = DIRT_ATLAS
+			if cell.size() >= 4:
+				atlas = Vector2i(int(cell[2]), int(cell[3]))
+			terrain_layer.set_cell(ct, DIRT_SOURCE, atlas)
+
 	for cell in d.get("steel", []):
 		if cell is Array and cell.size() == 2:
 			var c2 := Vector2i(int(cell[0]), int(cell[1]))
 			steel_layer.set_cell(c2, 1, _steel_variant(c2.x, c2.y))
 	for rect_dict in d.get("steel_rects", []):
 		_fill_steel_rect(rect_dict)
+
+
+# Load a PNG via FileAccess so user:// paths work in exported builds too.
+func _load_png(path: String) -> Image:
+	if path.ends_with("/") or not FileAccess.file_exists(path):
+		return null
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty():
+		return null
+	var img := Image.new()
+	if img.load_png_from_buffer(bytes) != OK:
+		return null
+	return img
 
 
 # ── Terrain shapes ─────────────────────────────────────────────────────

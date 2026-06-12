@@ -39,8 +39,8 @@ func _ready() -> void:
 	pause_button.pressed.connect(func(): pause_pressed.emit())
 	nuke_button.pressed.connect(func(): nuke_pressed.emit())
 	fast_button.toggled.connect(_on_fast_toggled)
-	# time_scale is global state — make sure it doesn't leak back to the menus.
-	tree_exiting.connect(func(): Engine.time_scale = 1.0)
+	# time_scale / tick rate are global state — never leak back to the menus.
+	tree_exiting.connect(func(): _set_speed(1.0))
 	skill_panel.skill_selected.connect(func(name: String): skill_chosen.emit(name))
 	for label in [saved_label, spawned_label, timer_label]:
 		if label:
@@ -133,8 +133,17 @@ func configure(total_lemmings: int, required: int, time_limit_sec: int, skill_co
 
 
 func _on_fast_toggled(on: bool) -> void:
-	Engine.time_scale = FAST_SPEED if on else 1.0
+	_set_speed(FAST_SPEED if on else 1.0)
 	fast_button.text = "»»" if on else "»"
+
+
+func _set_speed(factor: float) -> void:
+	# time_scale alone is not enough: in Godot 4 it scales the clock and deltas
+	# but does NOT add physics ticks, and the lemmings move in whole pixels per
+	# physics tick. Raise the tick rate with it so fast-forward actually runs
+	# the simulation faster (each tick still sees delta = 1/60 of game time).
+	Engine.time_scale = factor
+	Engine.physics_ticks_per_second = int(60.0 * factor)
 
 
 func update_skill_counts(skill_counts: Dictionary) -> void:

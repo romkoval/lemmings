@@ -20,6 +20,10 @@ func can_apply(lemming: Lemming) -> bool:
 	return lemming.current_state == Lemming.State.WALKING
 
 
+func needs_tick() -> bool:
+	return true
+
+
 func apply(lemming: Lemming) -> void:
 	tick_counter = 0
 	lemming.change_state(Lemming.State.MINING)

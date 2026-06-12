@@ -73,16 +73,28 @@ func _ready() -> void:
 		load_level(path)
 
 
+# Accepts either a level scene (.tscn) or a custom-level .json saved by the
+# in-game editor — the latter is played through the shared custom_base scene
+# with its data_path pointed at the JSON.
 func load_level(scene_path: String) -> void:
 	if current_level:
 		current_level.queue_free()
-	var scene: PackedScene = load(scene_path)
-	if scene == null:
+	var new_level: Level = null
+	if scene_path.ends_with(".json"):
+		var base: PackedScene = load("res://levels/custom_base.tscn")
+		new_level = base.instantiate() as Level
+		new_level.set("data_path", scene_path)
+	else:
+		var scene: PackedScene = load(scene_path)
+		if scene == null:
+			return
+		new_level = scene.instantiate() as Level
+	if new_level == null:
 		return
 	if result_screen:
 		result_screen.visible = false
 	current_level_path = scene_path
-	current_level = scene.instantiate() as Level
+	current_level = new_level
 	level_container.add_child(current_level)
 	skill_manager.configure(current_level.skill_counts)
 	hud.configure(
@@ -307,10 +319,18 @@ func _on_level_failed(_reason: String) -> void:
 
 
 func _on_retry() -> void:
+	# Reload the CURRENT level in place rather than reloading the whole scene:
+	# reload_current_scene() would re-instance game.tscn with its default
+	# initial_level_path and restart from level 1 (and custom .json levels set
+	# at runtime would be lost entirely).
 	GameManager.reset()
-	get_tree().reload_current_scene()
+	load_level(current_level_path)
 
 
 func _on_back_to_menu() -> void:
 	GameManager.reset()
+	# Test-playing from the level editor returns into the editor.
+	if LevelManager.editing_path != "":
+		get_tree().change_scene_to_file("res://scenes/editor/level_editor.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/menu/main_menu.tscn")

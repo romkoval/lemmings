@@ -40,8 +40,11 @@ const FLOAT_FALL_PER_FRAME: float = 0.6
 const FLOAT_DRIFT_PER_FRAME: float = 0.25
 const CLIMB_PX_PER_FRAME: float = 0.5   # 30 px/sec
 const BOMB_FUSE_SECONDS: float = 5.0
-# Anything that falls past the bottom of the playfield is lost (ТЗ §1.3).
-const KILL_PLANE_Y: float = 1280.0
+const EXPLOSION_RADIUS_PX: float = 24.0
+# Fallback when no level is bound: anything past the bottom of the default
+# playfield is lost (ТЗ §1.3). With a level, its kill_plane_y() is used so tall
+# custom levels don't kill lemmings mid-air.
+const KILL_PLANE_Y: float = 1440.0
 
 const TERMINAL_STATES: Array = [State.EXITED, State.DYING, State.SPLAT]
 
@@ -58,6 +61,7 @@ var lemming_id: int = -1
 var highlighted: bool = false
 
 var _level_ref: Level = null
+var _kill_y: float = KILL_PLANE_Y
 var _float_fall_acc: float = 0.0
 var _float_drift_acc: float = 0.0
 var _climb_acc: float = 0.0
@@ -75,7 +79,7 @@ func _physics_process(delta: float) -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
 		return
 	# Fell off the bottom of the world — count as lost so the level can resolve.
-	if current_state not in TERMINAL_STATES and global_position.y > KILL_PLANE_Y:
+	if current_state not in TERMINAL_STATES and global_position.y > _kill_y:
 		die("fell_out")
 		return
 	match current_state:
@@ -118,6 +122,7 @@ func _lv() -> Level:
 		while node:
 			if node is Level:
 				_level_ref = node
+				_kill_y = _level_ref.kill_plane_y()
 				break
 			node = node.get_parent()
 	return _level_ref
@@ -309,8 +314,12 @@ func _process_exploding(delta: float) -> void:
 		var phase: float = fposmod(bomb_timer, 0.5)
 		sprite.modulate = Color(1.0, 0.4, 0.4) if phase > 0.25 else Color(1.0, 1.0, 0.4)
 	if bomb_timer <= 0.0:
-		if active_skill_node and active_skill_node.has_method("detonate"):
-			active_skill_node.detonate(self)
+		# The crater belongs to the explosion, not to how the fuse was lit —
+		# nuked lemmings (no skill node) must blast terrain exactly like
+		# hand-assigned bombers. Steel survives (carve skips it).
+		var lv: Level = _lv()
+		if lv != null:
+			lv.carve_circle_px(global_position + Vector2(8, 8), EXPLOSION_RADIUS_PX)
 		AudioManager.play_sfx("explosion")
 		die("bomb")
 
@@ -377,7 +386,12 @@ func assign_skill(skill) -> bool:
 		return false
 	if not skill.has_method("can_apply") or not skill.can_apply(self):
 		return false
-	active_skill_node = skill
+	# Only driver skills own the active slot. Flag skills (climber/floater)
+	# must NOT clobber it: replacing a BUILDING lemming's BuilderSkill with a
+	# tick-less flag skill left it frozen mid-staircase — stuck in BUILDING
+	# with nothing driving it, turning the whole crowd away.
+	if skill.has_method("needs_tick") and skill.needs_tick():
+		active_skill_node = skill
 	skill.apply(self)
 	return true
 

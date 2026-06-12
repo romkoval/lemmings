@@ -82,6 +82,10 @@ text = "Играть"
 custom_minimum_size = Vector2(360, 78)
 text = "Выбор уровня"
 
+[node name="EditorButton" type="Button" parent="Buttons"]
+custom_minimum_size = Vector2(360, 78)
+text = "Редактор уровней"
+
 [node name="SettingsButton" type="Button" parent="Buttons"]
 custom_minimum_size = Vector2(360, 78)
 text = "Настройки"

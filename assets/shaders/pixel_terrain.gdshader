@@ -6,6 +6,10 @@ shader_type canvas_item;
 // and the grass band follows the actual ground contour, slopes included.
 
 uniform sampler2D material_tex : filter_nearest; // 0 dirt, 0.5 wood, 1 steel
+// Snapshot of the mask at level load. Grass is computed against THIS, not the
+// live mask, so freshly carved passages (basher/miner/digger/bomber) expose
+// bare dirt instead of sprouting grass along the cut.
+uniform sampler2D orig_mask : filter_linear;
 
 // Palette (tuned to the original game's warm dirt + bright grass).
 uniform vec3 dirt_light  : source_color = vec3(0.78, 0.58, 0.32);
@@ -55,15 +59,17 @@ void fragment() {
 
 	float mat = texture(material_tex, UV).r;
 
-	// Distance to the surface straight above (px of air within reach). Drives a
-	// chunky grass band that hugs the contour — thicker on slopes, like the
-	// original — plus a dark soil shadow right beneath it.
+	// Distance to the ORIGINAL surface straight above (px of pre-carve air
+	// within reach). Drives a chunky grass band that hugs the authored contour
+	// — thicker on slopes, like the original — plus a dark soil shadow right
+	// beneath it. Sampling the snapshot (not the live mask) keeps carved
+	// passages bare: their pixels were deep inside the original ground.
 	float air5 = 0.0;
 	for (int k = 1; k <= 5; k++) {
-		air5 += step(texture(TEXTURE, UV - vec2(0.0, float(k) * px.y)).r, EPS);
+		air5 += step(texture(orig_mask, UV - vec2(0.0, float(k) * px.y)).r, EPS);
 	}
-	float air8 = step(texture(TEXTURE, UV - vec2(0.0, 7.0 * px.y)).r, EPS)
-	           + step(texture(TEXTURE, UV - vec2(0.0, 9.0 * px.y)).r, EPS);
+	float air8 = step(texture(orig_mask, UV - vec2(0.0, 7.0 * px.y)).r, EPS)
+	           + step(texture(orig_mask, UV - vec2(0.0, 9.0 * px.y)).r, EPS);
 	// Air near the sides/bottom → darker rim, gives the silhouette a drawn
 	// outline like the original art.
 	float air_rim = 0.0;

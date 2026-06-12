@@ -34,11 +34,11 @@
 ```
 res://
 ├── main.tscn
-├── scenes/          # Full scenes (menu, game, level)
+├── scenes/          # Full scenes (menu, game, level, editor)
 ├── entities/        # Game entities (lemming, entrance, exit, traps)
 ├── skills/          # Skill classes (builder, climber, etc.)
 ├── managers/        # Autoload managers
-├── levels/          # Level .tscn + .json files
+├── levels/          # Level .tscn + .json files (custom levels: user://custom_levels/*.json)
 ├── data/            # Data classes & parsers
 ├── ui/              # UI components
 ├── autoload/        # Autoload singletons
