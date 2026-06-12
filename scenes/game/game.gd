@@ -75,8 +75,6 @@ func _ready() -> void:
 	GameManager.level_completed.connect(_on_level_completed)
 	GameManager.level_failed.connect(_on_level_failed)
 
-	AudioManager.play_music("theme")
-
 	var path: String = initial_level_path
 	if path == "":
 		path = "res://levels/fun/level_01.tscn"
@@ -130,6 +128,8 @@ func _load_level_scene(scene_path: String) -> void:
 		var focus: Vector2 = current_level.entrance.global_position if current_level.entrance else Vector2.INF
 		camera.setup_bounds(current_level, focus)
 	hud.bind_minimap(current_level, camera)
+	# Each level gets its own tune from the remake pack (restart keeps it going).
+	AudioManager.play_level_music(current_level.level_id)
 	_show_hint(current_level.hint)
 
 
