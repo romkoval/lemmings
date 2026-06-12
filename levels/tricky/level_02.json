@@ -1,0 +1,71 @@
+{
+  "id": "tricky_02",
+  "name": "Под пеклом",
+  "difficulty": "tricky",
+  "number": 2,
+  "save_required": 7,
+  "total_lemmings": 10,
+  "time_limit": 300,
+  "release_rate": 50,
+  "theme": "fire",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 0,
+    "digger": 1
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    248,
+    498
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "hazards": [
+    {
+      "type": "fire",
+      "rect": [
+        300,
+        434,
+        120,
+        30
+      ]
+    }
+  ],
+  "steel_rects": [
+    {
+      "x": 0,
+      "y": 32,
+      "w": 13,
+      "h": 1
+    },
+    {
+      "x": 14,
+      "y": 33,
+      "w": 7,
+      "h": 1
+    }
+  ],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}

@@ -34,6 +34,40 @@ const SOLUTIONS: Dictionary = {
 	"fun/level_05": [    # builder: bridge the chasm, the crowd crosses
 		{"f": 170, "skill": "builder", "x": 250, "y": 400},
 	],
+	# ── Tricky: the new objects (water/fire/traps/one-way walls) in play ──
+	# Walk calibration: the leader's feet_x ≈ frame + 61 (spawn lag included).
+	"tricky/level_01": [  # bridge over the water; the exit sits on the stair path
+		{"f": 222, "skill": "builder", "x": 291, "y": 455},
+	],
+	"tricky/level_02": [  # dig through the floor into the gallery under the fire
+		{"f": 187, "skill": "digger", "x": 256, "y": 455},
+	],
+	"tricky/level_03": [],  # trap gauntlet: the dense crowd walks it
+	"tricky/level_04": [  # one-way wall pointing along travel: bash through
+		{"f": 249, "skill": "basher", "x": 312, "y": 455},
+	],
+	"tricky/level_05": [  # block the crowd, bridge, then bomb the blocker
+		{"f": 130, "skill": "blocker", "x": 79, "y": 448},
+		{"f": 222, "skill": "builder", "x": 291, "y": 455},
+		{"f": 700, "skill": "bomber", "x": 110, "y": 448},
+	],
+	"tricky/level_06": [  # mine a diagonal tunnel off the plateau
+		{"f": 199, "skill": "miner", "x": 260, "y": 360},
+	],
+	"tricky/level_07": [  # one tall stairway over the fire lake to the ledge
+		{"f": 251, "skill": "builder", "x": 320, "y": 455},
+	],
+	"tricky/level_08": [  # steel cap guards the left — dig past its edge
+		{"f": 419, "skill": "digger", "x": 488, "y": 455},
+	],
+	"tricky/level_09": [  # bash the arrow wall, then bridge over the fire
+		{"f": 225, "skill": "basher", "x": 290, "y": 455},
+		{"f": 377, "skill": "builder", "x": 398, "y": 455},
+	],
+	"tricky/level_10": [  # dig into the gallery, bash the arrows, pass the clamp
+		{"f": 187, "skill": "digger", "x": 256, "y": 455},
+		{"f": 485, "skill": "basher", "x": 470, "y": 517},
+	],
 }
 
 const ST_RESULT: int = 3
@@ -68,6 +102,13 @@ func _verify(level: String) -> bool:
 	game.set("initial_level_path", "res://levels/%s.tscn" % level)
 	root.add_child(game)
 	await process_frame
+	# Death log (--debug-stuck): cause + position of every death, for authoring.
+	if OS.get_cmdline_args().has("--debug-stuck"):
+		var lvl_node = game.get("current_level")
+		if lvl_node and lvl_node.get("entrance") != null:
+			lvl_node.entrance.lemming_spawned.connect(func(lem):
+				lem.lemming_died.connect(func(l, cause):
+					print("  died: %s @ %s" % [cause, l.global_position])))
 	var step_i := 0
 	var frame := 0
 	while frame < MAX_FRAMES:
@@ -108,4 +149,7 @@ func _apply(game: Node, s: Dictionary) -> void:
 			best_d = d
 			best = n
 	if best != null:
-		sm.assign_to(best)
+		var ok: bool = sm.assign_to(best)
+		if OS.get_cmdline_args().has("--debug-stuck"):
+			print("  assign %s -> %s @ %s (target %s) %s" % [
+				s.get("skill"), best.name, best.global_position, target, "OK" if ok else "REFUSED"])

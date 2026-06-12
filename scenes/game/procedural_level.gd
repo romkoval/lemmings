@@ -11,12 +11,23 @@ const RAMP_L_ATLAS := Vector2i(1, 1)   # 45° slope rising to the left
 const MAX_TILE_Y: int = 40
 
 
+var _pending_oneway: Array = []
+
+
 func _ready() -> void:
 	_ensure_background()
 	if data_path != "" and FileAccess.file_exists(data_path):
 		_apply_data(_read_json(data_path))
 	_build_default_floor_if_empty()
 	super._ready()
+	# One-way walls are stamped into the pixel material map AFTER the terrain
+	# build (like steel): crisp authored footprint, no smoothing erosion.
+	for ow in _pending_oneway:
+		if ow is Dictionary:
+			var r := Rect2i(int(ow.get("x", 0)) * TILE_SIZE, int(ow.get("y", 0)) * TILE_SIZE,
+				int(ow.get("w", 1)) * TILE_SIZE, int(ow.get("h", 1)) * TILE_SIZE)
+			var mat: float = PixelTerrain.MAT_ONEWAY_R if int(ow.get("dir", 1)) > 0 else PixelTerrain.MAT_ONEWAY_L
+			fill_rect_px(r, mat)
 
 
 func _ensure_background() -> void:
@@ -144,6 +155,7 @@ func _apply_data(d: Dictionary) -> void:
 			steel_layer.set_cell(c2, 1, _steel_variant(c2.x, c2.y))
 	for rect_dict in d.get("steel_rects", []):
 		_fill_steel_rect(rect_dict)
+	_pending_oneway = d.get("oneway_rects", [])
 
 
 # Load a PNG via FileAccess so user:// paths work in exported builds too.

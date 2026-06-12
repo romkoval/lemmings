@@ -1,0 +1,63 @@
+{
+  "id": "tricky_03",
+  "name": "Аллея капканов",
+  "difficulty": "tricky",
+  "number": 3,
+  "save_required": 3,
+  "total_lemmings": 10,
+  "time_limit": 180,
+  "release_rate": 99,
+  "theme": "marble",
+  "skill_counts": {
+    "climber": 0,
+    "floater": 0,
+    "bomber": 0,
+    "blocker": 0,
+    "builder": 0,
+    "basher": 0,
+    "miner": 0,
+    "digger": 0
+  },
+  "entrance_pos": [
+    80,
+    398
+  ],
+  "entrance_direction": 1,
+  "exit_pos": [
+    620,
+    446
+  ],
+  "terrain_rects": [
+    {
+      "x": 0,
+      "y": 29,
+      "w": 45,
+      "h": 4
+    }
+  ],
+  "traps": [
+    {
+      "type": "crusher",
+      "pos": [
+        300,
+        440
+      ]
+    },
+    {
+      "type": "clamp",
+      "pos": [
+        400,
+        440
+      ]
+    }
+  ],
+  "steel_rects": [],
+  "terrain_columns": [
+    {
+      "x": 0,
+      "y": 20,
+      "w": 2,
+      "h": 9
+    }
+  ]
+}
