@@ -55,6 +55,7 @@ func _ready() -> void:
 	hud = HUD_SCENE.instantiate()
 	hud_layer.add_child(hud)
 	hud.pause_pressed.connect(_on_pause)
+	hud.step_pressed.connect(func(): GameManager.framestep())
 	hud.nuke_pressed.connect(_on_nuke)
 	hud.skill_chosen.connect(_on_skill_chosen)
 	hud.zoom_in_pressed.connect(func(): camera.zoom_in())

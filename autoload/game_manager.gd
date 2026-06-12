@@ -71,6 +71,19 @@ func _check_resolved() -> void:
 	all_lemmings_resolved.emit()
 
 
+# Framestep (US-3.3): advance the paused simulation by exactly one physics
+# tick. Unpause, wait until the tick counter moves, re-pause at the start of
+# the next frame — before any node processes it, so precisely one tick runs.
+func framestep() -> void:
+	if current_state != GameState.PAUSED:
+		return
+	var target: int = sim_tick + 1
+	set_state(GameState.PLAYING)
+	while sim_tick < target:
+		await get_tree().physics_frame
+	set_state(GameState.PAUSED)
+
+
 func complete_level(required_count: int) -> void:
 	# Idempotent: resolution and timer-expiry can both fire — only the first wins.
 	if current_state == GameState.RESULT:

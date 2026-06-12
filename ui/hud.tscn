@@ -47,6 +47,11 @@ text = "»"
 custom_minimum_size = Vector2(88, 48)
 text = "Пауза"
 
+[node name="StepButton" type="Button" parent="TopBar"]
+custom_minimum_size = Vector2(56, 48)
+disabled = true
+text = "⏭"
+
 [node name="NukeButton" type="Button" parent="TopBar"]
 custom_minimum_size = Vector2(92, 48)
 text = "Nuke"
