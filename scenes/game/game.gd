@@ -284,6 +284,8 @@ func _on_time_expired() -> void:
 
 
 func _on_level_completed(saved: int, required: int) -> void:
+	SaveManager.record_result(GameManager.current_level_id, saved,
+		current_level.total_lemmings, int(hud.time_remaining))
 	result_screen.show_result(true, saved, required, current_level.total_lemmings, _next_level_path() != "")
 
 
@@ -314,6 +316,9 @@ func _on_next() -> void:
 
 
 func _on_level_failed(_reason: String) -> void:
+	# A lost attempt still records its best (e.g. saved some but missed quota).
+	SaveManager.record_result(GameManager.current_level_id, GameManager.saved_count,
+		current_level.total_lemmings, int(hud.time_remaining))
 	result_screen.show_result(false, GameManager.saved_count, current_level.save_required, current_level.total_lemmings)
 
 
