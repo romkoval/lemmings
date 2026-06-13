@@ -168,6 +168,14 @@ const THEMES: Dictionary = {
 var theme_name: String = "dirt"
 
 
+# Themes that overlay a tiling charred-rock texture on the dirt body (the
+# inferno's basalt-with-lava-cracks look). Other themes leave rock_mix at 0 so
+# the shader keeps the painted palette.
+const THEME_ROCK: Dictionary = {
+	"inferno": "res://assets/backgrounds/inferno_rock.png",
+}
+
+
 func set_theme(name: String) -> void:
 	theme_name = name if THEMES.has(name) else "dirt"
 	_apply_theme()
@@ -179,6 +187,13 @@ func _apply_theme() -> void:
 		return
 	for key in THEMES[theme_name]:
 		sh.set_shader_parameter(key, THEMES[theme_name][key])
+	var rock_path: String = THEME_ROCK.get(theme_name, "")
+	if rock_path != "" and ResourceLoader.exists(rock_path):
+		sh.set_shader_parameter("rock_tex", load(rock_path))
+		sh.set_shader_parameter("rock_mix", 0.85)
+		sh.set_shader_parameter("rock_scale", 170.0)
+	else:
+		sh.set_shader_parameter("rock_mix", 0.0)
 
 
 func _finalize_build() -> void:
