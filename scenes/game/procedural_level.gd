@@ -4,6 +4,7 @@ extends Level
 @export var data_path: String = ""
 
 const BG_TEX_PATH := "res://assets/sprites/bg_sky.png"
+const ANIM_BG_DIR := "res://assets/backgrounds/inferno_anim"
 const GRASS_ATLAS := Vector2i(0, 0)
 const DIRT_ATLAS := Vector2i(1, 0)
 const RAMP_R_ATLAS := Vector2i(0, 1)   # 45° slope rising to the right
@@ -59,6 +60,13 @@ func _build_dark_background(layer: CanvasLayer) -> void:
 	floor_rect.color = Color(0.024, 0.020, 0.094)
 	floor_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(floor_rect)
+	# Animated lava vista (frames split from a video) if present — else the
+	# optional static sky, else just the dark floor colour above.
+	if ResourceLoader.exists(ANIM_BG_DIR.path_join("bg_0.png")):
+		var anim := AnimatedBackdrop.new()
+		anim.frames_dir = ANIM_BG_DIR
+		layer.add_child(anim)
+		return
 	if ResourceLoader.exists(BG_TEX_PATH):
 		var tex: Texture2D = load(BG_TEX_PATH) as Texture2D
 		if tex:
