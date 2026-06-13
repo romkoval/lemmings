@@ -15,9 +15,10 @@ var _pending_oneway: Array = []
 
 
 func _ready() -> void:
-	_ensure_background()
 	if data_path != "" and FileAccess.file_exists(data_path):
 		_apply_data(_read_json(data_path))
+	# Background depends on the level's theme, so build it after the data loads.
+	_ensure_background()
 	_build_default_floor_if_empty()
 	super._ready()
 	# One-way walls are stamped into the pixel material map AFTER the terrain
@@ -30,6 +31,10 @@ func _ready() -> void:
 			fill_rect_px(r, mat)
 
 
+# Themes that keep the original dark starfield background (the inferno's look).
+const DARK_BG_THEMES: Array[String] = ["inferno", "fire"]
+
+
 func _ensure_background() -> void:
 	if has_node("Background"):
 		return
@@ -37,6 +42,17 @@ func _ensure_background() -> void:
 	layer.name = "Background"
 	layer.layer = -10
 	add_child(layer)
+	if terrain_theme in DARK_BG_THEMES:
+		_build_dark_background(layer)
+	else:
+		# Surface levels (earth/dirt) and the rest get a themed scenic backdrop:
+		# bright sky + mountains + trees, or a dim cave for the stony themes.
+		var backdrop := BiomeBackdrop.new()
+		backdrop.biome = "cave" if terrain_theme in ["marble", "crystal"] else "grass"
+		layer.add_child(backdrop)
+
+
+func _build_dark_background(layer: CanvasLayer) -> void:
 	var floor_rect := ColorRect.new()
 	floor_rect.anchor_right = 1.0
 	floor_rect.anchor_bottom = 1.0
