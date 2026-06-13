@@ -21,22 +21,23 @@ const SS := 4                       # supersample the frames were baked at
 const FEET := Vector2(32, 94)       # feet anchor inside the logical canvas (px)
 const DISPLAY := 0.2                # texture px -> game px (body ≈ 24 px tall)
 
-# Clip name -> frame basenames (no extension). `walk` is a 2-frame shuffle; the
-# rest are single expressive poses — the source art isn't frame-consistent
-# enough for smooth multi-frame cycles (see docs/CHARACTER_SPEC.md).
-const CLIPS := {
-	"walk":  ["walk_0", "walk_1"],
-	"fall":  ["fall_0"],
-	"float": ["float_0"],
-	"climb": ["climb_0"],
-	"block": ["block_0"],
-	"build": ["build_0"],
-	"bash":  ["bash_0"],
-	"mine":  ["mine_0"],
-	"dig":   ["dig_0"],
-	"panic": ["panic_0"],
-	"cheer": ["cheer_0"],
-	"splat": ["splat_0"],
+# Clip playback (fps + loop). Frame textures are discovered on disk
+# (clip_0.png, clip_1.png, …) so animation length is data-driven: `walk` is a
+# long baked run cycle (tools/slice_character.py SEQUENCES); the rest are single
+# expressive poses sliced from the AI art (see docs/CHARACTER_SPEC.md).
+const CLIP_INFO := {
+	"walk":  {"fps": 16, "loop": true},
+	"fall":  {"fps": 6,  "loop": true},
+	"float": {"fps": 6,  "loop": true},
+	"climb": {"fps": 6,  "loop": true},
+	"block": {"fps": 6,  "loop": true},
+	"build": {"fps": 6,  "loop": true},
+	"bash":  {"fps": 6,  "loop": true},
+	"mine":  {"fps": 6,  "loop": true},
+	"dig":   {"fps": 6,  "loop": true},
+	"panic": {"fps": 6,  "loop": true},
+	"cheer": {"fps": 6,  "loop": false},
+	"splat": {"fps": 6,  "loop": false},
 }
 # Lemming.State (int) -> clip. DYING and SPLAT share the splat pose.
 const STATE_TO_CLIP := {
@@ -87,13 +88,17 @@ static func shared_frames() -> SpriteFrames:
 	var sf := SpriteFrames.new()
 	if sf.has_animation("default"):
 		sf.remove_animation("default")
-	for clip in CLIPS:
+	for clip in CLIP_INFO:
 		sf.add_animation(clip)
-		sf.set_animation_loop(clip, clip != "splat" and clip != "cheer")
-		sf.set_animation_speed(clip, 8.0 if clip == "walk" else 6.0)
-		for base in CLIPS[clip]:
-			var tex: Texture2D = load(FRAME_DIR + base + ".png")
-			if tex != null:
-				sf.add_frame(clip, tex)
+		sf.set_animation_loop(clip, bool(CLIP_INFO[clip]["loop"]))
+		sf.set_animation_speed(clip, float(CLIP_INFO[clip]["fps"]))
+		# Frames are discovered on disk: clip_0.png, clip_1.png, … until missing.
+		var i := 0
+		while true:
+			var path: String = FRAME_DIR + str(clip) + "_%d.png" % i
+			if not ResourceLoader.exists(path):
+				break
+			sf.add_frame(clip, load(path))
+			i += 1
 	_frames = sf
 	return _frames

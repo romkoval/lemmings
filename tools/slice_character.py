@@ -53,8 +53,6 @@ def cell_box(n, m=0):
 # crops are grown past the cell (+m) so limbs/tools aren't sliced off ("отсечка").
 M = 48
 STATES = {
-    "walk":  [{"src": "sheet.png", "box": cell_box(0, M), "solo": True, "flip": True},
-              {"src": "sheet.png", "box": cell_box(1, M), "solo": True, "flip": True}],
     "dig":   [{"src": "sheet.png", "box": cell_box(10, M), "solo": True}],
     "bash":  [{"src": "sheet.png", "box": cell_box(18, M), "solo": True, "flip": True}],
     "mine":  [{"src": "sheet.png", "box": cell_box(16, M), "solo": True}],
@@ -68,6 +66,16 @@ STATES = {
                "wall": [(150, 110, 70, 85), (188, 168, 142, 46), (120, 92, 64, 70)],
                "target": 34, "solo": True, "flip": True}],
     "splat": [{"src": "sheet_extra1.png", "box": cell_box(29, 30), "target": 24, "solo": True}],
+}
+
+# Multi-frame animation clips baked from a folder of consistent frames (a real
+# render cycle, unlike the one-off poses above). To avoid size pulsing / sliding,
+# every frame is cropped to the SAME union bbox and scaled by ONE factor, then
+# bottom-centred on the canvas — so the planted foot stays on the baseline and
+# only the limbs move. `step` subsamples frames (memory); frames must already
+# face RIGHT (flip=False) or be flipped to it.
+SEQUENCES = {
+    "walk": {"dir": "walk", "step": 2, "flip": False, "target": 36},
 }
 
 
@@ -155,6 +163,40 @@ def place(im, target_h):
     return canvas
 
 
+def bake_sequence(clip, spec):
+    """Bake an animation folder: one shared scale + union crop + bottom-centre
+    placement across all frames, so the body size is constant and the planted
+    foot stays on the baseline (no jitter)."""
+    import glob
+    src_dir = os.path.join(REF, spec["dir"])
+    files = sorted(glob.glob(os.path.join(src_dir, "*.png")))[::spec.get("step", 1)]
+    if not files:
+        raise SystemExit("no frames in %s" % src_dir)
+    ims = [Image.open(f).convert("RGBA") for f in files]
+    if spec.get("flip"):
+        ims = [im.transpose(Image.FLIP_LEFT_RIGHT) for im in ims]
+    # Union bbox over every frame → identical crop window keeps frames aligned.
+    boxes = [im.split()[3].getbbox() for im in ims]
+    ux0 = min(b[0] for b in boxes); uy0 = min(b[1] for b in boxes)
+    ux1 = max(b[2] for b in boxes); uy1 = max(b[3] for b in boxes)
+    uw, uh = ux1 - ux0, uy1 - uy0
+    scale = (spec.get("target", TARGET_BODY) * SS) / uh    # one factor for all
+    cw, ch = CANVAS_W * SS, CANVAS_H * SS
+    fx, fy = FEET[0] * SS, FEET[1] * SS
+    paths = []
+    for i, im in enumerate(ims):
+        crop = im.crop((ux0, uy0, ux1, uy1))
+        w, h = max(1, round(uw * scale)), max(1, round(uh * scale))
+        crop = crop.resize((w, h), Image.LANCZOS)
+        canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+        canvas.alpha_composite(crop, (int(fx - w / 2), int(fy - h)))
+        p = os.path.join(OUT, "%s_%d.png" % (clip, i))
+        canvas.save(p)
+        paths.append(p)
+    print("%-7s -> %d frames (step %d)" % (clip, len(paths), spec.get("step", 1)))
+    return paths
+
+
 def build(only=None):
     manifest = {}
     for state, frames in STATES.items():
@@ -169,6 +211,10 @@ def build(only=None):
             paths.append(p)
         manifest[state] = paths
         print("%-7s -> %s" % (state, ", ".join(os.path.basename(p) for p in paths)))
+    for clip, spec in SEQUENCES.items():
+        if only and clip not in only:
+            continue
+        manifest[clip] = bake_sequence(clip, spec)
     return manifest
 
 

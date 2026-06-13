@@ -35,10 +35,10 @@ func test_every_lemming_state_maps_to_a_real_clip() -> void:
 
 func test_every_clip_has_at_least_one_frame() -> void:
 	var frames: SpriteFrames = LemmingSprite.shared_frames()
-	for clip in SpriteScript.CLIPS:
+	for clip in SpriteScript.CLIP_INFO:
 		assert_true(frames.has_animation(clip), "animation '%s' built" % clip)
 		assert_gt(frames.get_frame_count(clip), 0, "clip '%s' has frames" % clip)
-	assert_eq(frames.get_frame_count("walk"), 2, "walk is a 2-frame shuffle")
+	assert_gt(frames.get_frame_count("walk"), 4, "walk is a multi-frame cycle")
 	assert_false(frames.get_animation_loop("splat"), "splat does not loop")
 
 
