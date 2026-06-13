@@ -55,6 +55,24 @@ func test_tricky_levels_use_new_objects() -> void:
 		assert_true(has_new, "tricky_%02d uses a new object" % n)
 
 
+func test_taxing_inferno_statically_sane() -> void:
+	# US-2.5: the inferno ascent — an extra-large hell level with a pinned
+	# palette and tune, lava everywhere. True solvability is proven by
+	# scripts/verify_levels.gd (blocker pen + two stairways + one-way gate).
+	_validate_level_solvable(1, "taxing")
+	var data: Dictionary = LevelManager.load_level_data("taxing", 1)
+	assert_eq(str(data.get("theme")), "inferno", "hell palette pinned")
+	assert_eq(str(data.get("music")), "inferno", "hell tune pinned")
+	assert_true(PixelTerrain.THEMES.has("inferno"), "the palette actually exists")
+	var exit_pos: Array = data.get("exit_pos", [0, 0])
+	assert_gt(float(exit_pos[0]), 1800.0, "the exit sits 2.5+ screens away — extra large")
+	var fires: int = 0
+	for hz in data.get("hazards", []):
+		if str(hz.get("type")) == "fire":
+			fires += 1
+	assert_gte(fires, 4, "lava lakes, falls and the sea")
+
+
 func test_save_manager_round_trip() -> void:
 	SaveManager.mark_level_complete("test_xyz")
 	assert_true(SaveManager.is_level_complete("test_xyz"))

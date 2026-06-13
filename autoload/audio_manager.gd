@@ -8,6 +8,9 @@ var music_player: AudioStreamPlayer
 var sound_cache: Dictionary = {}
 
 const SFX_POOL_SIZE: int = 8
+# The in-game music pack: remake_01..remake_17 — original chiptune compositions
+# (scripts/make_music.py) cycling per level number, like the original game did.
+const LEVEL_TRACKS: int = 17
 const MUSIC_BUS: String = "Music"
 const SFX_BUS: String = "SFX"
 const MASTER_BUS: String = "Master"
@@ -85,14 +88,32 @@ func play_music(track_name: String) -> void:
 	var path: String = _resolve(MUSIC_PATH + track_name)
 	if path == "":
 		return
+	# Re-triggering the same track (level restart) keeps it playing seamlessly.
+	if music_player.playing and music_player.stream and music_player.stream.resource_path == path:
+		return
 	var stream: AudioStream = load(path)
-	# Loop background music (placeholder WAVs aren't flagged to loop on import).
+	# Loop background music (neither WAV placeholders nor the OGG pack are
+	# flagged to loop on import).
 	if stream is AudioStreamWAV:
 		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		stream.loop_begin = 0
 		stream.loop_end = stream.data.size() / 2  # 16-bit mono → 2 bytes/sample
+	elif stream is AudioStreamOggVorbis:
+		stream.loop = true
 	music_player.stream = stream
 	music_player.play()
+
+
+# Pick the level's tune the way the original did — by level number, wrapping
+# around the pack. Ids without a trailing number (custom levels) hash instead,
+# so each still gets a stable tune of its own.
+func play_level_music(level_id: String) -> void:
+	var n: int = absi(level_id.hash())
+	var re := RegEx.create_from_string("(\\d+)\\s*$")
+	var m: RegExMatch = re.search(level_id)
+	if m:
+		n = int(m.get_string(1)) - 1
+	play_music("remake_%02d" % ((n % LEVEL_TRACKS) + 1))
 
 
 func stop_music() -> void:

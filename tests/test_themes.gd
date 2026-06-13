@@ -23,6 +23,9 @@ func test_set_theme_pushes_palette_into_the_shader() -> void:
 	terrain.set_theme("marble")
 	assert_eq(sh.get_shader_parameter("dirt_mid"), PixelTerrain.THEMES["marble"]["dirt_mid"],
 		"switching themes overwrites every palette uniform")
+	terrain.set_theme("inferno")
+	assert_eq(sh.get_shader_parameter("grass_hi"), PixelTerrain.THEMES["inferno"]["grass_hi"],
+		"US-2.5: the hell palette is a first-class theme")
 
 
 func test_unknown_theme_falls_back_to_dirt() -> void:

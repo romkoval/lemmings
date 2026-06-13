@@ -68,6 +68,16 @@ const SOLUTIONS: Dictionary = {
 		{"f": 187, "skill": "digger", "x": 256, "y": 455},
 		{"f": 485, "skill": "basher", "x": 470, "y": 517},
 	],
+	# ── Taxing: the inferno ascent. A blocker pens the crowd by the hatch while
+	# the leader stairs over the lava lake onto the hanging bridge, bashes the
+	# one-way gate, stairs again to the top shelf — then a bomber frees the mob.
+	"taxing/level_01": [
+		{"f": 165, "skill": "blocker", "x": 122, "y": 462},
+		{"f": 491, "skill": "builder", "x": 552, "y": 462},
+		{"f": 1229, "skill": "basher", "x": 916, "y": 300},
+		{"f": 1526, "skill": "builder", "x": 1160, "y": 302},
+		{"f": 2120, "skill": "bomber", "x": 135, "y": 462},
+	],
 }
 
 const ST_RESULT: int = 3
@@ -111,6 +121,7 @@ func _verify(level: String) -> bool:
 					print("  died: %s @ %s" % [cause, l.global_position])))
 	var step_i := 0
 	var frame := 0
+	var trace: bool = OS.get_cmdline_args().has("--trace")
 	while frame < MAX_FRAMES:
 		frame += 1
 		while step_i < steps.size() and int(steps[step_i].get("f", 0)) <= frame:
@@ -118,6 +129,15 @@ func _verify(level: String) -> bool:
 			step_i += 1
 		if _gm.current_state == ST_RESULT:
 			break
+		# Leader trace (--trace): the frontmost lemming every 60 frames — for
+		# calibrating solution frames against the actual walk.
+		if trace and frame % 60 == 0:
+			var front = null
+			for n in root.get_tree().get_nodes_in_group("lemmings"):
+				if front == null or n.global_position.x > front.global_position.x:
+					front = n
+			if front:
+				print("  f%d front @ %s state=%s" % [frame, front.global_position, front.get("current_state")])
 		await physics_frame
 	var req := 0
 	var lvl = game.get("current_level")
@@ -130,6 +150,28 @@ func _verify(level: String) -> bool:
 	if OS.get_cmdline_args().has("--debug-stuck"):
 		for n in root.get_tree().get_nodes_in_group("lemmings"):
 			print("  lem @ ", n.global_position, " state=", n.get("current_state"))
+		if lvl and lvl.has_method("rect_blocks_carve_px"):
+			var gate := Rect2i(917, 287, 16, 17)
+			print("  gate blocks(+1)=", lvl.rect_blocks_carve_px(gate, 1),
+				" blocks(-1)=", lvl.rect_blocks_carve_px(gate, -1),
+				" steel929=", lvl.is_steel_px(Vector2(929.5, 295.5)),
+				" ow929=", lvl.oneway_dir_px(Vector2(929.5, 295.5)),
+				" ow917=", lvl.oneway_dir_px(Vector2(917.5, 295.5)),
+				" solid917=", lvl.is_solid_px(Vector2(917.5, 295.5)))
+		# Surface profile around the first stuck lemming: topmost solid y per
+		# column — phantom walls and unexpected steps show up as jumps.
+		var stuck: Array = root.get_tree().get_nodes_in_group("lemmings")
+		if lvl and not stuck.is_empty():
+			var cx: int = int(stuck[0].global_position.x)
+			var line: String = ""
+			for px in range(cx - 120, cx + 200, 8):
+				var top: int = -1
+				for py in range(60, 600, 4):
+					if lvl.is_solid_px(Vector2(px + 0.5, py + 0.5)):
+						top = py
+						break
+				line += "%d:%d " % [px, top]
+			print("  surface: ", line)
 	game.queue_free()
 	await process_frame
 	_gm.reset()

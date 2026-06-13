@@ -18,20 +18,20 @@ anchor_right = 1.0
 offset_left = 12.0
 offset_right = -12.0
 offset_bottom = 56.0
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="SavedLabel" type="Label" parent="TopBar"]
-custom_minimum_size = Vector2(188, 0)
+custom_minimum_size = Vector2(150, 0)
 text = "Спасено: 0 / 0"
 vertical_alignment = 1
 
 [node name="SpawnedLabel" type="Label" parent="TopBar"]
-custom_minimum_size = Vector2(118, 0)
+custom_minimum_size = Vector2(92, 0)
 text = "Вышло: 0"
 vertical_alignment = 1
 
 [node name="TimerLabel" type="Label" parent="TopBar"]
-custom_minimum_size = Vector2(84, 0)
+custom_minimum_size = Vector2(64, 0)
 text = "00:00"
 vertical_alignment = 1
 
@@ -39,21 +39,21 @@ vertical_alignment = 1
 size_flags_horizontal = 3
 
 [node name="FastButton" type="Button" parent="TopBar"]
-custom_minimum_size = Vector2(62, 48)
+custom_minimum_size = Vector2(56, 48)
 toggle_mode = true
 text = "»"
 
 [node name="PauseButton" type="Button" parent="TopBar"]
-custom_minimum_size = Vector2(88, 48)
+custom_minimum_size = Vector2(76, 48)
 text = "Пауза"
 
 [node name="StepButton" type="Button" parent="TopBar"]
 custom_minimum_size = Vector2(56, 48)
 disabled = true
-text = "⏭"
+text = "Шаг"
 
 [node name="NukeButton" type="Button" parent="TopBar"]
-custom_minimum_size = Vector2(92, 48)
+custom_minimum_size = Vector2(72, 48)
 text = "Nuke"
 
 [node name="BottomBar" type="PanelContainer" parent="."]

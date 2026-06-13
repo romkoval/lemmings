@@ -35,9 +35,10 @@ const TOOL_LABELS: Dictionary = {
 const BRUSH_SIZES: Array = [6.0, 12.0, 24.0]
 const BRUSH_LABELS: Array = ["⏺", "⬤", "⚫"]
 
-const THEME_KEYS: Array = ["dirt", "fire", "marble", "crystal"]
+const THEME_KEYS: Array = ["dirt", "fire", "marble", "crystal", "inferno"]
 const THEME_LABELS: Dictionary = {
 	"dirt": "Земля", "fire": "Огонь", "marble": "Мрамор", "crystal": "Кристалл",
+	"inferno": "Инферно",
 }
 
 const SKILL_KEYS: Array = [
