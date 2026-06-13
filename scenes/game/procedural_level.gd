@@ -3,7 +3,7 @@ extends Level
 
 @export var data_path: String = ""
 
-const BG_TEX_PATH := "res://assets/backgrounds/inferno.png"
+const BG_TEX_PATH := "res://assets/sprites/bg_sky.png"
 const GRASS_ATLAS := Vector2i(0, 0)
 const DIRT_ATLAS := Vector2i(1, 0)
 const RAMP_R_ATLAS := Vector2i(0, 1)   # 45° slope rising to the right
