@@ -26,6 +26,13 @@ uniform vec3 steel_dark  : source_color = vec3(0.42, 0.45, 0.51);
 uniform vec3 steel_seam  : source_color = vec3(0.24, 0.26, 0.31);
 uniform vec3 oneway_col  : source_color = vec3(0.93, 0.78, 0.20);
 
+// Optional charred-rock overlay (inferno): a tiling basalt + lava-crack texture
+// blended over the procedural dirt. rock_mix = 0 (the default) disables it, so
+// every other theme keeps the painted-palette look untouched.
+uniform sampler2D rock_tex : filter_linear, repeat_enable;
+uniform float rock_mix : hint_range(0.0, 1.0) = 0.0;
+uniform float rock_scale = 110.0;
+
 const float EPS = 0.47; // must match PixelTerrain.SOLID_EPS
 
 varying vec2 wpos;
@@ -91,6 +98,15 @@ void fragment() {
 		col = dirt_deep;
 	} else if (speck < 0.02) {
 		col = dirt_light;
+	}
+
+	// Charred-rock overlay (inferno only — rock_mix stays 0 elsewhere). The
+	// procedural noise rides along as a subtle brightness wobble so the tiling
+	// doesn't read as a flat repeat. Surface crust / wood / steel branches below
+	// still override this, so only the deep body becomes basalt.
+	if (rock_mix > 0.001) {
+		vec3 rock = texture(rock_tex, wpos / rock_scale).rgb;
+		col = mix(col, rock * (0.9 + 0.45 * (n_big - 0.5)), rock_mix);
 	}
 
 	// ── Wood (builder planks): band around 0.5 ──
