@@ -69,7 +69,7 @@ var _float_fall_acc: float = 0.0
 var _float_drift_acc: float = 0.0
 var _climb_acc: float = 0.0
 
-@onready var sprite: AnimatedSprite2D = get_node_or_null("Sprite")
+@onready var sprite: LemmingSprite = get_node_or_null("Sprite")
 
 
 func _ready() -> void:
@@ -434,25 +434,10 @@ func die(cause: String) -> void:
 func _update_visual() -> void:
 	if sprite == null:
 		return
-	# Sprite art faces right by default; flip when walking left.
-	sprite.flip_h = direction < 0
+	# The procedural sprite poses itself from state + direction.
+	sprite.dir = direction
+	sprite.state = current_state
 	# Reset bomb-flash tint when leaving EXPLODING; the bomb flash owns the tint.
 	if current_state != State.EXPLODING:
 		# Highlight the lemming the player is about to assign a skill to.
 		sprite.modulate = Color(1.7, 1.7, 0.7) if highlighted else Color(1, 1, 1, 1)
-	var anim: StringName = &"walk"
-	match current_state:
-		State.WALKING:    anim = &"walk"
-		State.FALLING:    anim = &"fall"
-		State.FLOATING:   anim = &"float"
-		State.CLIMBING:   anim = &"climb"
-		State.BLOCKING:   anim = &"block"
-		State.BUILDING:   anim = &"build"
-		State.BASHING:    anim = &"bash"
-		State.MINING:     anim = &"mine"
-		State.DIGGING:    anim = &"dig"
-		State.EXPLODING:  anim = &"bomb"
-		State.EXITED:     anim = &"exit"
-		State.SPLAT, State.DYING: anim = &"die"
-	if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim):
-		sprite.play(anim)

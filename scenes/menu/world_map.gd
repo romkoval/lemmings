@@ -11,8 +11,6 @@ extends Control
 # offset by a manual vertical scroll (drag to pan), so the trail can be any
 # length without art assets.
 
-const LEMMING_FRAMES: SpriteFrames = preload("res://entities/lemming_frames.tres")
-
 const TOP_MARGIN := 160.0
 const BOTTOM_MARGIN := 220.0
 const SPACING := 156.0          # vertical gap between level nodes
@@ -52,7 +50,7 @@ var _press_pos: Vector2 = Vector2.ZERO
 var _press_scroll: float = 0.0
 var _moved: float = 0.0
 
-var avatar: AnimatedSprite2D = null
+var avatar: LemmingSprite = null
 var _avatar_pos: Vector2 = Vector2.ZERO    # content-space position
 var _walk_t: float = -1.0                  # ≥0 while stepping to the frontier
 var _walk_from: Vector2 = Vector2.ZERO
@@ -77,12 +75,8 @@ func _ready() -> void:
 	rebuild()
 	_make_decor()
 
-	avatar = AnimatedSprite2D.new()
-	avatar.sprite_frames = LEMMING_FRAMES
-	avatar.animation = &"walk"
-	avatar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	avatar.scale = Vector2(2.6, 2.6)
-	avatar.play()
+	avatar = LemmingSprite.new()
+	avatar.scale = Vector2(2.4, 2.4)
 	add_child(avatar)
 
 	get_viewport().size_changed.connect(_recompute_scroll_limits)
@@ -208,7 +202,7 @@ func _process(delta: float) -> void:
 		var to: Vector2 = nodes[f]["pos"]
 		var a: float = clampf(_walk_t / WALK_TIME, 0.0, 1.0)
 		_avatar_pos = _walk_from.lerp(to, a)
-		avatar.flip_h = to.x < _walk_from.x
+		avatar.dir = -1 if to.x < _walk_from.x else 1
 		if a >= 1.0:
 			_walk_t = -1.0
 			_avatar_pos = to

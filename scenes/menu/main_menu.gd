@@ -4,7 +4,6 @@ extends Control
 # the life: a row of lemmings marching across the ground, a title that drops in
 # and gently pulses, buttons that slide in on load, and a mute toggle.
 
-const LEMMING_FRAMES: SpriteFrames = preload("res://entities/lemming_frames.tres")
 const MARCH_COUNT: int = 6
 const MARCH_SPEED: float = 70.0
 const LEMMING_SCALE: float = 4.0
@@ -19,7 +18,7 @@ const LEMMING_SCALE: float = 4.0
 @onready var lemming_layer: Node2D = $LemmingLayer
 @onready var ground: ColorRect = $Ground
 
-var _marchers: Array[AnimatedSprite2D] = []
+var _marchers: Array[LemmingSprite] = []
 var _ground_y: float = 0.0
 
 
@@ -43,13 +42,10 @@ func _spawn_marchers() -> void:
 	_ground_y = ground.position.y
 	var spacing: float = size.x / float(MARCH_COUNT)
 	for i in MARCH_COUNT:
-		var lem := AnimatedSprite2D.new()
-		lem.sprite_frames = LEMMING_FRAMES
-		lem.animation = &"walk"
-		lem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var lem := LemmingSprite.new()
 		lem.scale = Vector2(LEMMING_SCALE, LEMMING_SCALE)
-		lem.position = Vector2(spacing * i + 40.0, _ground_y - 28.0)
-		lem.play()
+		# Feet sit on the grass line (the sprite's origin is at its feet).
+		lem.position = Vector2(spacing * i + 40.0, _ground_y + 6.0)
 		lemming_layer.add_child(lem)
 		_marchers.append(lem)
 
