@@ -5,56 +5,24 @@
   "number": 2,
   "save_required": 6,
   "total_lemmings": 10,
-  "time_limit": 240,
+  "time_limit": 300,
   "release_rate": 50,
   "skill_counts": {
-    "climber": 0,
-    "floater": 0,
-    "bomber": 0,
-    "blocker": 0,
-    "builder": 0,
-    "basher": 0,
-    "miner": 0,
-    "digger": 5
+    "climber": 0, "floater": 0, "bomber": 0, "blocker": 0,
+    "builder": 0, "basher": 0, "miner": 0, "digger": 5
   },
-  "entrance_pos": [
-    80,
-    398
-  ],
+  "entrance_pos": [80, 388],
   "entrance_direction": 1,
-  "exit_pos": [
-    352,
-    446
-  ],
+  "exit_pos": [760, 452],
+  "playfield": [0, 0, 1180, 720],
   "add_depth": false,
   "terrain_rects": [
-    {
-      "x": 0,
-      "y": 26,
-      "w": 45,
-      "h": 2
-    },
-    {
-      "x": 0,
-      "y": 29,
-      "w": 45,
-      "h": 5
-    }
+    {"x": 0, "y": 26, "w": 72, "h": 12}
   ],
   "terrain_columns": [
-    {
-      "x": 0,
-      "y": 20,
-      "w": 2,
-      "h": 14
-    },
-    {
-      "x": 43,
-      "y": 20,
-      "w": 2,
-      "h": 14
-    }
+    {"x": 0,  "y": 14, "w": 2, "h": 12, "no_grass": true},
+    {"x": 70, "y": 14, "w": 2, "h": 12, "no_grass": true}
   ],
   "steel_rects": [],
-  "hint": "Выберите навык «Копатель» на панели внизу и тапните по леммингу — он выроет шахту вниз. Остальные последуют за ним."
+  "hint": "Толпа заперта на широкой площадке между стен. Выход спрятан в толще земли справа. Выберите «Копатель» внизу и тапните по леммингу прямо над выходом — шахта вниз приведёт всю толпу к двери."
 }

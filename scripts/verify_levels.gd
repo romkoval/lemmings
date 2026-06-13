@@ -15,11 +15,12 @@ extends SceneTree
 const SOLUTIONS: Dictionary = {
 	"fun/level_01": [],  # just walk — no skills needed
 	"fun/level_06": [],  # sandbox: all skills unlocked, walkable to the exit
-	"fun/level_02": [    # digger: one shaft, the rest follow down to the exit
-		{"f": 275, "skill": "digger", "x": 352, "y": 399},
+	"fun/level_02": [    # digger: sink a shaft right over the buried exit — the
+		# penned crowd files down through it and the exit zone saves each one
+		{"f": 700, "skill": "digger", "x": 760, "y": 415},
 	],
-	"fun/level_03": [    # builder: a stairway up to the exit, the crowd climbs it
-		{"f": 260, "skill": "builder", "x": 340, "y": 400},
+	"fun/level_03": [    # builder: a long stairway up to the high shelf
+		{"f": 560, "skill": "builder", "x": 620, "y": 467},
 	],
 	"fun/level_04": [    # climber: assign at the hatch, each scales the wall
 		{"f": 30, "skill": "climber", "x": 90, "y": 460},
