@@ -17,7 +17,15 @@ var _idx: int = -1
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Fill the viewport. NB: set_anchors_preset() leaves stale offsets here (the
+	# control ends up 0×0 and COVERED draws nothing) — set anchors with zero
+	# offsets explicitly, like the other full-screen backdrops.
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

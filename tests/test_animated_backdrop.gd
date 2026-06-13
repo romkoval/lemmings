@@ -40,3 +40,7 @@ func test_covers_the_viewport_behind_the_playfield() -> void:
 	await wait_physics_frames(1)
 	assert_eq(b.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_COVERED, "fills the screen")
 	assert_eq(b.mouse_filter, Control.MOUSE_FILTER_IGNORE, "never eats input")
+	# Regression: a bad anchor preset left stale offsets → 0×0 rect → COVERED drew
+	# nothing (black screen). The rect must actually fill the viewport.
+	assert_gt(b.size.x, 0.0, "rect has real width (not collapsed to zero)")
+	assert_gt(b.size.y, 0.0, "rect has real height")
