@@ -76,6 +76,24 @@ func test_basher_stops_against_the_arrow_and_cuts_along_it() -> void:
 	assert_false(level.is_solid_px(Vector2(95.5, 455.5)), "slice carved along the arrow")
 
 
+func test_basher_clears_a_flush_mouth_against_a_wall() -> void:
+	# Bashing with the body already against the wall must NOT leave a thin lip at
+	# the start column — that stub used to stop the followers while only the
+	# basher itself got through. The first swing reaches behind the feet.
+	var level := _level()
+	level.fill_rect_px(Rect2i(0, 464, 400, 16))                       # floor
+	level.fill_rect_px(Rect2i(120, 400, 40, 64), PixelTerrain.MAT_ONEWAY_R)
+	var lem := _lem(level, Vector2(112, 448), 1)                      # feet (120,464), at the wall face
+	assert_true(lem.assign_skill(BasherSkill.new()))
+	for i in range(BasherSkill.TICKS_PER_SWING * 3 + 2):
+		lem._process_skill(1.0 / 60.0)
+	# The whole tunnel at walk height — including the start column — is open: a
+	# follower walking through finds no stub.
+	for px in range(118, 156, 2):
+		assert_false(level.is_solid_px(Vector2(px + 0.5, 455.5)),
+			"no wall lip at x=%d (flush mouth)" % px)
+
+
 func test_miner_respects_the_arrow() -> void:
 	var level := _level()
 	level.fill_rect_px(Rect2i(32, 464, 200, 48))                    # thick floor

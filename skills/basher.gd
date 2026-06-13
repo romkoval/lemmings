@@ -9,9 +9,14 @@ extends BaseSkill
 const TICKS_PER_SWING: int = 24
 const SLICE_DEPTH: int = 16
 const TUNNEL_H: int = 17        # rows feet-17..feet-1; the floor row stays
+# How far behind the feet the first swing reaches, so the tunnel mouth is flush
+# with where the basher started — otherwise, bashing right against a wall left a
+# thin lip at the start column that following lemmings bumped into and turned at.
+const MOUTH_BACK: int = 6
 
 var tick_counter: int = 0
 var _advance_budget: float = 0.0
+var _first_swing: bool = true
 
 
 func get_skill_name() -> String:
@@ -29,6 +34,7 @@ func needs_tick() -> bool:
 func apply(lemming: Lemming) -> void:
 	tick_counter = 0
 	_advance_budget = 0.0
+	_first_swing = true
 	lemming.change_state(Lemming.State.BASHING)
 
 
@@ -49,13 +55,21 @@ func tick(lemming: Lemming) -> void:
 	tick_counter = 0
 	var fx: int = lemming.feet_x()
 	var fy: int = lemming.feet_y()
-	var x0: int = fx + 2 if lemming.direction > 0 else fx - 2 - SLICE_DEPTH
-	var slice := Rect2i(x0, fy - TUNNEL_H, SLICE_DEPTH, TUNNEL_H)
-	# Steel or a one-way wall pointing against us — stop swinging.
-	if level.rect_blocks_carve_px(slice, lemming.direction):
+	# The first swing reaches MOUTH_BACK px behind the feet so the entrance is
+	# carved flush; later swings cut the usual slice ahead.
+	var back: int = MOUTH_BACK if _first_swing else 0
+	var depth: int = SLICE_DEPTH + back
+	var x0: int = fx + 2 - back if lemming.direction > 0 else fx - 2 - SLICE_DEPTH
+	var slice := Rect2i(x0, fy - TUNNEL_H, depth, TUNNEL_H)
+	# Steel or a one-way wall pointing against us — stop swinging. Probe only the
+	# forward slice: the mouth-clearing tail is behind us (already passable).
+	var ahead := Rect2i(fx + 2 if lemming.direction > 0 else fx - 2 - SLICE_DEPTH,
+		fy - TUNNEL_H, SLICE_DEPTH, TUNNEL_H)
+	if level.rect_blocks_carve_px(ahead, lemming.direction):
 		lemming.change_state(Lemming.State.WALKING)
 		return
 	var carved: int = level.carve_rect_px(slice, lemming.direction)
+	_first_swing = false
 	if carved == 0:
 		# Nothing solid ahead — tunnel finished, resume walking.
 		lemming.change_state(Lemming.State.WALKING)
