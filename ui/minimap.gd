@@ -8,12 +8,23 @@ extends Panel
 
 const MAX_W: float = 150.0
 const MAX_H: float = 110.0
-const DIRT_COL := Color(0.55, 0.40, 0.18)
 const STEEL_COL := Color(0.62, 0.62, 0.68)
 const LEM_COL := Color(1, 1, 1)
 const ENTRANCE_COL := Color(0.45, 0.7, 1.0)
 const EXIT_COL := Color(0.3, 0.9, 0.4)
 const VIEW_COL := Color(1.0, 0.85, 0.2)
+# Per-theme {surface cap colour, buried-rock colour} — so the minimap reads as
+# the level's biome instead of one flat brown. Surface cells (open sky above)
+# take the cap colour; deeper cells the rock colour, with a little noise so the
+# fill has texture rather than being a solid block.
+const THEME_COLS := {
+	"dirt":    [Color(0.50, 0.78, 0.30), Color(0.46, 0.33, 0.17)],
+	"fire":    [Color(1.00, 0.70, 0.25), Color(0.50, 0.18, 0.06)],
+	"inferno": [Color(1.00, 0.55, 0.15), Color(0.30, 0.09, 0.05)],
+	"marble":  [Color(0.88, 0.90, 0.95), Color(0.45, 0.47, 0.55)],
+	"crystal": [Color(0.55, 0.92, 1.00), Color(0.28, 0.20, 0.55)],
+}
+const HAZARD_COLS := {"water": Color(0.25, 0.55, 1.0, 0.7), "fire": Color(1.0, 0.4, 0.1, 0.7)}
 
 var _level: Node = null
 var _camera: Node = null
@@ -59,11 +70,16 @@ func _fit_size() -> void:
 
 
 func _build_thumbnail() -> void:
-	# Sample the pixel terrain on an 8px grid — twice the detail the old
-	# tile-based silhouette had, cheap enough to build once per level.
-	const STEP: int = 8
+	# Sample the pixel terrain on a 6px grid for readable relief: surface cells
+	# (sky directly above) take the theme's cap colour, buried cells the rock
+	# colour shaded by a touch of noise, steel its own grey.
+	const STEP: int = 6
 	var cols: int = maxi(1, int(_bounds.size.x) / STEP)
 	var rows: int = maxi(1, int(_bounds.size.y) / STEP)
+	var theme: String = str(_level.get("terrain_theme")) if _level else "dirt"
+	var pair: Array = THEME_COLS.get(theme, THEME_COLS["dirt"])
+	var cap: Color = pair[0]
+	var rock: Color = pair[1]
 	var img := Image.create(cols, rows, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	for ty in range(rows):
@@ -71,10 +87,18 @@ func _build_thumbnail() -> void:
 			var wp := Vector2(
 				_bounds.position.x + (tx + 0.5) * STEP,
 				_bounds.position.y + (ty + 0.5) * STEP)
+			if not (_level.has_method("is_solid_px") and _level.is_solid_px(wp)):
+				continue
 			if _level.has_method("is_steel_px") and _level.is_steel_px(wp):
 				img.set_pixel(tx, ty, STEEL_COL)
-			elif _level.has_method("is_solid_px") and _level.is_solid_px(wp):
-				img.set_pixel(tx, ty, DIRT_COL)
+				continue
+			# Open sky one step up → this is a surface/grass cap.
+			var above := Vector2(wp.x, wp.y - STEP)
+			var col: Color = cap if not _level.is_solid_px(above) else rock
+			# Subtle deterministic shading so the fill has texture, not a slab.
+			var n: float = float((tx * 131 + ty * 709) % 100) / 100.0
+			col = col.lightened(0.08 * n).darkened(0.06 * (1.0 - n))
+			img.set_pixel(tx, ty, col)
 	_thumb = ImageTexture.create_from_image(img)
 
 
@@ -90,6 +114,20 @@ func _draw() -> void:
 	# on top.
 	draw_rect(rect, Color(0.05, 0.05, 0.10, 0.85))
 	draw_texture_rect(_thumb, rect, false)
+	# Hazard zones (water / fire) as translucent patches, so dangers are visible
+	# on the overview.
+	for hz in get_tree().get_nodes_in_group("hazards"):
+		if not hz.has_method("rect_px"):
+			continue
+		var r: Rect2 = hz.rect_px()
+		# HazardType enum: WATER = 0, FIRE = 1.
+		var tname: String = "water" if ("hazard_type" in hz and int(hz.hazard_type) == 0) else "fire"
+		var mini := Rect2(_to_mini(r.position), r.size * _scale())
+		draw_rect(mini, HAZARD_COLS.get(tname, HAZARD_COLS["fire"]))
+	# Traps as small red diamonds.
+	for tp in get_tree().get_nodes_in_group("traps"):
+		if tp is Node2D:
+			draw_circle(_to_mini((tp as Node2D).global_position), 2.0, Color(1.0, 0.3, 0.3))
 	# Entrance / exit markers.
 	var ent = _level.get("entrance")
 	if ent != null:
