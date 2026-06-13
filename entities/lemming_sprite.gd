@@ -18,7 +18,7 @@ extends Node2D
 
 const FRAME_DIR := "res://assets/characters/lemming/frames/"
 const SS := 4                       # supersample the frames were baked at
-const FEET := Vector2(28, 80)       # feet anchor inside the logical canvas (px)
+const FEET := Vector2(32, 94)       # feet anchor inside the logical canvas (px)
 const DISPLAY := 0.2                # texture px -> game px (body ≈ 24 px tall)
 
 # Clip name -> frame basenames (no extension). `walk` is a 2-frame shuffle; the
