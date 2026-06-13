@@ -190,8 +190,8 @@ func _apply_theme() -> void:
 	var rock_path: String = THEME_ROCK.get(theme_name, "")
 	if rock_path != "" and ResourceLoader.exists(rock_path):
 		sh.set_shader_parameter("rock_tex", load(rock_path))
-		sh.set_shader_parameter("rock_mix", 0.82)
-		sh.set_shader_parameter("rock_scale", 130.0)
+		sh.set_shader_parameter("rock_mix", 0.85)
+		sh.set_shader_parameter("rock_scale", 170.0)
 	else:
 		sh.set_shader_parameter("rock_mix", 0.0)
 
