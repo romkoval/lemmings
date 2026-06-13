@@ -475,4 +475,17 @@ func _on_back_to_menu() -> void:
 	if LevelManager.editing_path != "":
 		get_tree().change_scene_to_file("res://scenes/editor/level_editor.tscn")
 		return
+	# Campaign levels return to the world map (so the journey loops and progress
+	# shows); custom/standalone plays go to the main menu.
+	if _is_campaign_level(GameManager.current_level_id):
+		get_tree().change_scene_to_file("res://scenes/menu/world_map.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/menu/main_menu.tscn")
+
+
+func _is_campaign_level(level_id: String) -> bool:
+	var sep: int = level_id.rfind("_")
+	if sep <= 0:
+		return false
+	return LevelManager.CAMPAIGN_RANKS.has(level_id.substr(0, sep)) \
+		and level_id.substr(sep + 1).is_valid_int()
