@@ -26,6 +26,25 @@ func _ready() -> void:
 	_build_language_row()
 	_build_hints_toggle()
 	_build_stats_block()
+	_apply_theme()
+
+
+# Match the shared menu look: dark slate, gold title, an accent-bordered panel
+# and a warm "back" button (US-2.6 styling pass).
+func _apply_theme() -> void:
+	var bg := $BG as ColorRect
+	if bg:
+		bg.color = MenuTheme.BG_DARK
+	MenuTheme.style_title($Title as Label, 52)
+	var panel := $Panel as PanelContainer
+	if panel:
+		panel.add_theme_stylebox_override("panel", MenuTheme.panel_box(MenuTheme.ACCENT_SETTINGS))
+	MenuTheme.style_button(back_button, MenuTheme.ACCENT_BACK, 30)
+	# Headers and labels built in code read better in the shared text colour.
+	for lbl in [$Panel/VBox/MusicRow/MusicLabel, $Panel/VBox/SfxRow/SfxLabel,
+			$Panel/VBox/MuteRow/MuteLabel]:
+		if lbl:
+			(lbl as Label).add_theme_color_override("font_color", MenuTheme.TEXT)
 
 
 # Language switch (US-3.5). Control texts auto-translate on locale change;

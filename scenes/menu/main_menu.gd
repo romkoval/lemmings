@@ -12,7 +12,6 @@ const LEMMING_SCALE: float = 4.0
 @onready var title: Label = $Title
 @onready var buttons: VBoxContainer = $Buttons
 @onready var play_button: Button = $Buttons/PlayButton
-@onready var level_select_button: Button = $Buttons/LevelSelectButton
 @onready var editor_button: Button = $Buttons/EditorButton
 @onready var settings_button: Button = $Buttons/SettingsButton
 @onready var quit_button: Button = $Buttons/QuitButton
@@ -26,7 +25,6 @@ var _ground_y: float = 0.0
 
 func _ready() -> void:
 	play_button.pressed.connect(_on_play)
-	level_select_button.pressed.connect(_on_select)
 	editor_button.pressed.connect(_on_editor)
 	settings_button.pressed.connect(_on_settings)
 	quit_button.pressed.connect(_on_quit)
@@ -106,30 +104,17 @@ func _style_buttons() -> void:
 	title.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.0))
 	title.add_theme_constant_override("outline_size", 10)
 	var accents := {
-		play_button: Color(0.3, 0.78, 0.4),
-		level_select_button: Color(0.32, 0.6, 1.0),
-		editor_button: Color(0.95, 0.72, 0.25),
-		settings_button: Color(0.7, 0.55, 1.0),
-		quit_button: Color(0.9, 0.4, 0.4),
+		play_button: MenuTheme.ACCENT_PLAY,
+		editor_button: MenuTheme.ACCENT_EDIT,
+		settings_button: MenuTheme.ACCENT_SETTINGS,
+		quit_button: MenuTheme.ACCENT_BACK,
 	}
 	for btn in accents.keys():
 		_style_button(btn, accents[btn])
 
 
 func _style_button(btn: Button, accent: Color) -> void:
-	btn.add_theme_font_size_override("font_size", 34)
-	for state in ["normal", "hover", "pressed"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.14, 0.13, 0.18) if state != "hover" else Color(0.2, 0.19, 0.26)
-		if state == "pressed":
-			sb.bg_color = accent.darkened(0.5)
-		sb.border_color = accent
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(14)
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
-		btn.add_theme_stylebox_override(state, sb)
-	btn.add_theme_color_override("font_color", Color.WHITE)
+	MenuTheme.style_button(btn, accent, 34)
 
 
 # ── Mute ───────────────────────────────────────────────────────────────────
@@ -147,11 +132,9 @@ func _refresh_mute() -> void:
 
 # ── Navigation ─────────────────────────────────────────────────────────────
 func _on_play() -> void:
-	get_tree().change_scene_to_file("res://scenes/game/game.tscn")
-
-
-func _on_select() -> void:
-	get_tree().change_scene_to_file("res://scenes/menu/level_select.tscn")
+	# "Play" opens the campaign journey — the world map, from which every level
+	# is launched (no more dropping blindly into level 1).
+	get_tree().change_scene_to_file("res://scenes/menu/world_map.tscn")
 
 
 func _on_editor() -> void:

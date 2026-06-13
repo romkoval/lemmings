@@ -7,6 +7,12 @@ const CUSTOM_LEVELS_DIR: String = "user://custom_levels/"
 
 var current_level_data: Dictionary = {}
 var available_categories: PackedStringArray = ["fun", "tricky", "taxing", "mayhem"]
+# Ranks in the order the campaign journey visits them — also the order of the
+# biome zones on the world map (grass → dungeon → inferno → …).
+const CAMPAIGN_RANKS: Array[String] = ["fun", "tricky", "taxing", "mayhem"]
+const RANK_BIOME: Dictionary = {
+	"fun": "grass", "tricky": "dungeon", "taxing": "inferno", "mayhem": "inferno",
+}
 # When the player test-plays a level from the editor, this holds the JSON path
 # being edited so "back" from the game returns into the editor, not the menu.
 var editing_path: String = ""
@@ -38,6 +44,25 @@ func load_level_data(category: String, level_number: int) -> Dictionary:
 	current_level_data = json.data
 	level_loaded.emit(current_level_data)
 	return current_level_data
+
+
+# The whole campaign as one ordered journey: every rank's levels in sequence,
+# each entry {category, number, id, name, biome}. Drives the world map and its
+# linear progression. Side-effect free (does not touch current_level_data).
+func campaign_order() -> Array:
+	var out: Array = []
+	for cat in CAMPAIGN_RANKS:
+		for fname in list_levels(cat):
+			var num: int = int(fname.replace("level_", "").replace(".json", ""))
+			var d: Dictionary = load_level_json(get_level_path(cat, num))
+			out.append({
+				"category": cat,
+				"number": num,
+				"id": "%s_%02d" % [cat, num],
+				"name": str(d.get("name", "")),
+				"biome": str(RANK_BIOME.get(cat, "dungeon")),
+			})
+	return out
 
 
 func list_levels(category: String) -> Array:
